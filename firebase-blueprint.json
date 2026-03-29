@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "ConsignmentRequest": {
+      "title": "Consignment Request",
+      "description": "A request for vehicle consignment service",
+      "type": "object",
+      "properties": {
+        "clientName": { "type": "string", "description": "Name of the client" },
+        "clientPhone": { "type": "string", "description": "Phone number of the client" },
+        "origin": { "type": "string", "description": "Starting location" },
+        "destination": { "type": "string", "description": "Ending location" },
+        "carModel": { "type": "string", "description": "Vehicle model" },
+        "carNumber": { "type": "string", "description": "Vehicle plate number" },
+        "preferredDate": { "type": "string", "format": "date", "description": "Preferred date for consignment" },
+        "preferredTime": { "type": "string", "description": "Preferred time for consignment" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"], "description": "Current status of the request" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the request was created" }
+      },
+      "required": ["clientName", "clientPhone", "origin", "destination", "carModel", "status", "createdAt"]
+    },
+    "ScrapExportRequest": {
+      "title": "Scrap or Export Request",
+      "description": "A request for vehicle scrap or export appraisal",
+      "type": "object",
+      "properties": {
+        "carModel": { "type": "string", "description": "Vehicle model" },
+        "carYear": { "type": "string", "description": "Vehicle manufacturing year" },
+        "contact": { "type": "string", "description": "Client phone number" },
+        "location": { "type": "string", "description": "Vehicle location" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "completed", "cancelled"], "description": "Current status of the request" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the request was created" }
+      },
+      "required": ["carModel", "contact", "location", "status", "createdAt"]
+    },
+    "ChauffeurRequest": {
+      "title": "Chauffeur Request",
+      "description": "A request for chauffeur service",
+      "type": "object",
+      "properties": {
+        "clientPhone": { "type": "string", "description": "Client phone number" },
+        "startAddress": { "type": "string", "description": "Starting location" },
+        "endAddress": { "type": "string", "description": "Ending location" },
+        "transmission": { "type": "string", "enum": ["오토", "스틱"], "description": "Vehicle transmission type" },
+        "autoPrice": { "type": "string", "description": "Automatically calculated price" },
+        "distance": { "type": "string", "description": "Calculated distance" },
+        "manualPrice": { "type": "string", "description": "Manually entered price" },
+        "priceConfirmed": { "type": "boolean", "description": "Whether the client confirmed the price" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"], "description": "Current status of the request" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the request was created" }
+      },
+      "required": ["clientPhone", "startAddress", "endAddress", "status", "createdAt"]
+    },
+    "Inquiry": {
+      "title": "Inquiry",
+      "description": "A general inquiry or partnership request",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the inquirer" },
+        "phone": { "type": "string", "description": "Phone number of the inquirer" },
+        "message": { "type": "string", "description": "Inquiry message content" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"], "description": "Current status of the inquiry" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the inquiry was created" }
+      },
+      "required": ["name", "phone", "message", "status", "createdAt"]
+    },
+    "SiteContent": {
+      "title": "Site Content",
+      "description": "CMS content for the landing page",
+      "type": "object",
+      "properties": {
+        "heroTitle": { "type": "string" },
+        "heroSubtitle": { "type": "string" },
+        "heroDescription": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "contactPhone": { "type": "string" },
+        "contactAddress": { "type": "string" },
+        "businessNumber": { "type": "string" },
+        "pricingTable": { "type": "array", "items": { "type": "object" } },
+        "footerText": { "type": "string" },
+        "services": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  },
+  "firestore": {
+    "consignment_requests": {
+      "schema": "ConsignmentRequest",
+      "description": "Collection of consignment service requests"
+    },
+    "chauffeur_requests": {
+      "schema": "ChauffeurRequest",
+      "description": "Collection of chauffeur service requests"
+    },
+    "scrap_export_requests": {
+      "schema": "ScrapExportRequest",
+      "description": "Collection of scrap or export appraisal requests"
+    },
+    "inquiries": {
+      "schema": "Inquiry",
+      "description": "Collection of general inquiries"
+    },
+    "orders": {
+      "schema": "object",
+      "description": "Unified collection for all service orders"
+    },
+    "site_content": {
+      "schema": "SiteContent",
+      "description": "CMS content for the website"
+    }
+  }
+}

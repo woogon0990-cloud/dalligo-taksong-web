@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: consignment_requests
+    // Document ID: auto-generated
+    // Fields:
+    //   - clientName: string (required, 1-100 chars)
+    //   - clientPhone: string (required, 1-20 chars)
+    //   - origin: string (required, 1-200 chars)
+    //   - destination: string (required, 1-200 chars)
+    //   - carModel: string (required, 1-100 chars)
+    //   - carNumber: string (optional, 1-20 chars)
+    //   - preferredDate: string (optional, ISO 8601)
+    //   - preferredTime: string (optional, 1-50 chars)
+    //   - status: string (required, enum: ['pending', 'confirmed', 'completed', 'cancelled'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: scrap_export_requests
+    // Document ID: auto-generated
+    // Fields:
+    //   - carModel: string (required, 1-100 chars)
+    //   - carYear: string (optional, 1-10 chars)
+    //   - contact: string (required, 1-20 chars)
+    //   - location: string (required, 1-200 chars)
+    //   - status: string (required, enum: ['pending', 'contacted', 'completed', 'cancelled'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users
+    // Document ID: auth.uid
+    // Fields:
+    //   - role: string (required, enum: ['admin', 'user'])
+    //   - email: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email.lower() == "woogon0990@gmail.com" ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidStatus(status, allowed) {
+      return status in allowed;
+    }
+
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidConsignmentRequest(data) {
+      return data.keys().hasAll(['clientName', 'clientPhone', 'startAddress', 'endAddress', 'carModel', 'status', 'createdAt']) &&
+             isValidString(data.clientName, 1, 100) &&
+             isValidString(data.clientPhone, 1, 20) &&
+             isValidString(data.startAddress, 1, 500) &&
+             isValidString(data.endAddress, 1, 500) &&
+             isValidString(data.carModel, 1, 100) &&
+             isValidStatus(data.status, ['pending', 'confirmed', 'completed', 'cancelled']) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidScrapExportRequest(data) {
+      return data.keys().hasAll(['carModel', 'contact', 'location', 'status', 'createdAt']) &&
+             isValidString(data.carModel, 1, 100) &&
+             isValidString(data.contact, 1, 20) &&
+             isValidString(data.location, 1, 500) &&
+             isValidStatus(data.status, ['pending', 'contacted', 'completed', 'cancelled']) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidChauffeurRequest(data) {
+      return data.keys().hasAll(['clientPhone', 'startAddress', 'endAddress', 'status', 'createdAt']) &&
+             isValidString(data.clientPhone, 1, 20) &&
+             isValidString(data.startAddress, 1, 500) &&
+             isValidString(data.endAddress, 1, 500) &&
+             isValidStatus(data.status, ['pending', 'confirmed', 'completed', 'cancelled']) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidInquiry(data) {
+      return data.keys().hasAll(['name', 'phone', 'message', 'status', 'createdAt']) &&
+             isValidString(data.name, 1, 100) &&
+             isValidString(data.phone, 1, 20) &&
+             isValidString(data.message, 1, 2000) &&
+             isValidStatus(data.status, ['pending', 'completed', 'cancelled']) &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /consignment_requests/{requestId} {
+      allow create: if isValidConsignmentRequest(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /chauffeur_requests/{requestId} {
+      allow create: if isValidChauffeurRequest(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /scrap_export_requests/{requestId} {
+      allow create: if isValidScrapExportRequest(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /inquiries/{inquiryId} {
+      allow create: if isValidInquiry(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if true; // Anyone can submit an order
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Allow the designated admin to create their own admin document
+      allow create: if isAuthenticated() && request.auth.uid == userId && 
+                    (request.auth.token.email.matches("(?i)woogon0990@gmail.com") && request.resource.data.role == 'admin' || 
+                     request.resource.data.role == 'user');
+      // Only admins can update roles, or users can update their own non-role info
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && request.resource.data.role == resource.data.role);
+    }
+
+    match /site_content/{contentId} {
+      // Public read for the website to update instantly
+      allow read: if true;
+      // Only admins can update the content
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
