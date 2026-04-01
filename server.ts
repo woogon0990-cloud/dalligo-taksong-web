@@ -16,10 +16,10 @@ async function startServer() {
   // Aligo SMS API
   app.post("/api/notify", async (req, res) => {
     const { type, data } = req.body;
-    const apiKey = process.env.ALIGO_API_KEY;
-    const userId = process.env.ALIGO_USER_ID;
-    const sender = "01048685893"; // 인증된 발신번호
-    const adminPhone = process.env.ADMIN_PHONE || process.env.ALIGO_RECEIVE;
+    const apiKey = process.env.ALIGO_API_KEY || "lxuoam6r4qpo2bbgp0le95axqasmpuie";
+    const userId = process.env.ALIGO_USER_ID || "mono0990";
+    const sender = process.env.ALIGO_SENDER || "01048685893"; // 인증된 발신번호
+    const adminPhone = process.env.ADMIN_PHONE || process.env.ALIGO_RECEIVE || "01048685893";
     const customerPhone = data.phone;
 
     if (!apiKey || !userId) {
@@ -32,20 +32,17 @@ async function startServer() {
     let customerMessage = "";
     
     if (type === "consignment") {
-      adminMessage = `[달리고 탁송 1844-1585] 새로운 탁송 접수\n- 성함: ${data.name}\n- 연락처: ${data.phone}\n- 출발지: ${data.start}\n- 도착지: ${data.end}\n- 차종: ${data.carType}`;
-      customerMessage = `[달리고 탁송 1844-1585] 안녕하세요 ${data.name}님, 탁송 상담 접수가 완료되었습니다.\n담당자가 곧 연락드리겠습니다. 감사합니다.`;
-    } else if (type === "scrap") {
-      adminMessage = `[달리고 탁송 1844-1585] 폐차/수출 새로운 접수\n- 성함: ${data.name || '고객'}\n- 연락처: ${data.phone}\n- 지역: ${data.location}\n- 차종: ${data.carModel}`;
-      customerMessage = `[달리고 탁송 1844-1585] 안녕하세요 ${data.name || '고객'}님, 폐차/수출 견적 신청이 완료되었습니다.\n담당자가 확인 후 연락드리겠습니다.`;
+      adminMessage = `[달리고 탁송 1844-1585] 새로운 탁송 접수\n- 성함: ${data.name}\n- 연락처: ${data.phone}\n- 출발지: ${data.start}\n- 도착지: ${data.end}\n- 차종: ${data.carType}\n- 요금: ${data.proposedPrice || '상담'}`;
+      // Customer message removed from submission step as per user request
     } else if (type === "chauffeur") {
       adminMessage = `[달리고 탁송 1844-1585] 새로운 대리운전 접수\n- 연락처: ${data.phone}\n- 출발지: ${data.start}\n- 도착지: ${data.end}\n- 요금: ${data.price}`;
-      customerMessage = `[달리고 탁송 1844-1585] 대리운전 접수가 완료되었습니다.\n출발: ${data.start}\n도착: ${data.end}\n담당 기사님이 곧 배정됩니다.`;
+    } else if (type === "accepted") {
+      customerMessage = `[달리고 탁송 1844-1585] 안녕하세요 고객님, 신청하신 오더가 최종 접수되었습니다.\n담당 기사님이 배정되는 대로 연락드리겠습니다.\n- 출발: ${data.start}\n- 도착: ${data.end}\n감사합니다.`;
     }
 
     try {
-      console.log(`Sending Aligo SMS to Admin (${adminPhone}) and Customer (${customerPhone})`);
+      console.log(`Sending Aligo SMS. Type: ${type}, Admin: ${!!adminMessage}, Customer: ${!!customerMessage}`);
       
-      // Aligo expects data in the body (form-encoded)
       const params = new URLSearchParams();
       params.append('key', apiKey);
       params.append('user_id', userId);
@@ -58,8 +55,8 @@ async function startServer() {
         }
       };
 
-      // Send to Admin
-      if (adminPhone) {
+      // Send to Admin (only if adminMessage exists)
+      if (adminPhone && adminMessage) {
         const adminParams = new URLSearchParams(params);
         adminParams.append('receiver', adminPhone);
         adminParams.append('msg', adminMessage);
@@ -67,8 +64,8 @@ async function startServer() {
         console.log("Aligo Admin Response:", adminRes.data);
       }
 
-      // Send to Customer
-      if (customerPhone) {
+      // Send to Customer (only if customerMessage exists)
+      if (customerPhone && customerMessage) {
         const customerParams = new URLSearchParams(params);
         customerParams.append('receiver', customerPhone);
         customerParams.append('msg', customerMessage);

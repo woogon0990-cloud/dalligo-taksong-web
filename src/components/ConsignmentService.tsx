@@ -120,7 +120,7 @@ const ConsignmentService: React.FC<ConsignmentServiceProps> = ({ onConsult, onFo
                 </h3>
                 <p className="text-slate-500 font-medium leading-relaxed">
                   사고나 고장으로 굴러가지 않는 차라도 걱정하지 마세요. 
-                  달리고 탁송의 전문 견인차가 출동하여 <span className="text-slate-900 font-bold">추가 비용 부담 없이 무료로</span> 안전하게 폐차장까지 이동시켜 드립니다.
+                  달리고 탁송의 전문 견인차가 출동하여 <span className="text-slate-900 font-bold">추가 비용 부담 없이 무료로</span> 안전하게 목적지까지 이동시켜 드립니다.
                 </p>
               </div>
             </motion.div>
@@ -136,12 +136,12 @@ const ConsignmentService: React.FC<ConsignmentServiceProps> = ({ onConsult, onFo
                   <Coins className="w-8 h-8" />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 mb-6">
-                  3. 차량 인도 전 <br />
-                  <span className="text-orange-600">'보상금 선입금'</span>
+                  3. 투명한 요금 <br />
+                  <span className="text-orange-600">'정찰제 운영'</span>
                 </h3>
                 <p className="text-slate-500 font-medium leading-relaxed">
-                  사기 피해를 원천 차단합니다. 차량을 가져가기 전, 약속된 보상금을 <span className="text-slate-900 font-bold">먼저 고객님 계좌로 입금</span>해 드립니다. 
-                  입금 확인 후 안심하고 차키만 넘겨주시면 모든 절차가 끝납니다.
+                  거리별 표준 요금제를 준수하여 투명한 가격을 제시합니다. 
+                  <span className="text-slate-900 font-bold">부당한 추가 요금 요구 없이</span> 정직하게 서비스합니다.
                 </p>
               </div>
             </motion.div>
@@ -380,15 +380,15 @@ const ConsignmentService: React.FC<ConsignmentServiceProps> = ({ onConsult, onFo
                 },
                 {
                   step: "STEP 3",
-                  title: "확인 및 입금",
-                  desc: "차량 확인 후 즉시 폐차비를 입금해 드립니다.",
-                  icon: <Coins className="w-6 h-6" />,
+                  title: "차량 인수",
+                  desc: "차량 상태 확인 및 사진 촬영 후 기사님이 차량을 인수합니다.",
+                  icon: <UserCheck className="w-6 h-6" />,
                   color: "bg-blue-600"
                 },
                 {
                   step: "STEP 4",
                   title: "안전 이동",
-                  desc: "입금 확인 후, 기사님이 차키를 인계받아 안전하게 이동시킵니다.",
+                  desc: "인수 완료 후, 기사님이 안전하게 목적지까지 이동시킵니다.",
                   icon: <CheckCircle2 className="w-6 h-6" />,
                   color: "bg-blue-600"
                 }

@@ -69,6 +69,27 @@ const OrdersTab: React.FC = () => {
     try {
       await updateDoc(doc(db, 'orders', order.id), { status: newStatus });
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: newStatus as any } : o));
+
+      // If status is updated to 'completed', send notification to customer
+      if (newStatus === 'completed') {
+        try {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'accepted',
+              data: {
+                phone: order.clientPhone,
+                start: order.startAddress,
+                end: order.endAddress
+              }
+            })
+          });
+          console.log("Acceptance notification sent to customer");
+        } catch (notifyErr) {
+          console.warn("Failed to send acceptance notification:", notifyErr);
+        }
+      }
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -134,6 +155,26 @@ const OrdersTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          { label: '전체 접수', count: orders.length, color: 'blue', icon: <FileSpreadsheet className="w-5 h-5" /> },
+          { label: '대기중', count: orders.filter(o => o.status === 'pending').length, color: 'amber', icon: <Clock className="w-5 h-5" /> },
+          { label: '접수완료', count: orders.filter(o => o.status === 'completed').length, color: 'emerald', icon: <CheckCircle2 className="w-5 h-5" /> },
+          { label: '취소됨', count: orders.filter(o => o.status === 'cancelled').length, color: 'rose', icon: <AlertCircle className="w-5 h-5" /> },
+        ].map((stat, i) => (
+          <div key={i} className={`bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4`}>
+            <div className={`p-3 bg-${stat.color}-50 text-${stat.color}-600 rounded-2xl`}>
+              {stat.icon}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+              <p className={`text-2xl font-black text-${stat.color}-600`}>{stat.count}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex items-center gap-3">
@@ -165,7 +206,7 @@ const OrdersTab: React.FC = () => {
           >
             <option value="all">모든 상태</option>
             <option value="pending">대기중</option>
-            <option value="completed">완료</option>
+            <option value="completed">접수완료</option>
             <option value="cancelled">취소</option>
           </select>
 
@@ -247,7 +288,7 @@ const OrdersTab: React.FC = () => {
                         }`}
                       >
                         <option value="pending">대기중</option>
-                        <option value="completed">완료</option>
+                        <option value="completed">접수완료</option>
                         <option value="cancelled">취소</option>
                       </select>
                     </td>
@@ -276,7 +317,7 @@ const OrdersTab: React.FC = () => {
              </div>
              <div className="flex items-center gap-1">
                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-               <span className="text-[10px] font-bold text-slate-500">완료</span>
+               <span className="text-[10px] font-bold text-slate-500">접수완료</span>
              </div>
              <div className="flex items-center gap-1">
                <div className="w-2 h-2 bg-rose-400 rounded-full"></div>

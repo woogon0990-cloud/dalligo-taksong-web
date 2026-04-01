@@ -72,14 +72,11 @@ export interface AppContent {
   cancellationPolicy?: CancellationItem[];
   // Navigation & Button labels
   navConsignment?: string;
-  navScrap?: string;
   navChauffeur?: string;
   navRecruitment?: string;
   navCustomerCenter?: string;
   heroConsignmentTitle?: string;
   heroConsignmentDesc?: string;
-  heroScrapTitle?: string;
-  heroScrapDesc?: string;
   heroChauffeurTitle?: string;
   heroChauffeurDesc?: string;
   // New fields for all pages
@@ -124,18 +121,6 @@ export interface AppContent {
   chauffeurCancellationPolicy?: CancellationItem[];
   chauffeurExemptionClauses?: PricingCondition[];
 
-  // Scrap Page
-  scrapHeroTitle?: string;
-  scrapHeroSubtitle?: string;
-  scrapFormTitle?: string;
-  scrapProcessTitle?: string;
-  scrapGuideTitle?: string;
-  scrapPriceTitle?: string;
-  scrapBannerTitle?: string;
-  scrapBannerSubtitle?: string;
-  scrapLegalNotice?: PricingCondition[];
-  scrapStrategicPoints?: PricingCondition[];
-
   // Recruitment Page
   recruitmentHeroTitle?: string;
   recruitmentHeroSubtitle?: string;
@@ -156,6 +141,7 @@ export interface AppContent {
   chauffeurFormPriceTitle?: string;
   chauffeurFormVehicleTitle?: string;
   chauffeurFormSubmitLabel?: string;
+  chauffeurFormHeroButtonLabel?: string;
   chauffeurFormBannerButtonLabel?: string;
 
   // Footer Headers

@@ -31,7 +31,6 @@ import { motion } from 'motion/react';
 import { Helmet } from 'react-helmet-async';
 import { generateTransportImage } from './services/imageService';
 import DriverRecruitment from './components/DriverRecruitment';
-import ScrapExport from './components/ScrapExport';
 import ConsignmentForm from './components/ConsignmentForm';
 import ConsignmentService from './components/ConsignmentService';
 import ConsignmentPriceTable from './components/ConsignmentPriceTable';
@@ -72,12 +71,12 @@ const ICON_MAP: Record<string, React.FC<any>> = {
 const steps = [
   { id: "01", title: "상담신청", desc: "차종 및 지역 정보 기반\n실시간 무료 견적 상담" },
   { id: "02", title: "현장픽업", desc: "원하는 시간과 장소로\n전문 기사가 방문하여 인수" },
-  { id: "03", title: "대금지급", desc: "차량 입고 즉시 확인 후\n당일 최고가 현금 지급" },
-  { id: "04", title: "말소처리", desc: "관공서 말소 신고 대행 및\n말소증명서 비대면 발송" }
+  { id: "03", title: "안전운송", desc: "베테랑 기사가 목적지까지\n안전하게 차량을 운송합니다" },
+  { id: "04", title: "운송완료", desc: "목적지 도착 후 차량 상태 확인 및\n고객님께 최종 인도 완료" }
 ];
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'recruitment' | 'scrapExport' | 'consignmentForm' | 'consignmentService' | 'chauffeur' | 'chauffeurForm' | 'customerCenter' | 'login' | 'admin'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'recruitment' | 'consignmentForm' | 'consignmentService' | 'chauffeur' | 'chauffeurForm' | 'customerCenter' | 'login' | 'admin'>('home');
   const { user, logout, isAdmin, isLoading: isAuthLoading } = useAuth();
   const { content, isLoading: isContentLoading } = useContent();
 
@@ -161,52 +160,30 @@ export default function App() {
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-20">
-              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-blue-600 shadow-sm">
-                  <img 
-                    src={content.logoImage || "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png"} 
-                    alt="Dalligo Logo" 
-                    className="w-full h-full object-contain p-1"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      const fallback = "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png";
-                      if (target.src !== fallback) {
-                        target.src = fallback;
-                      }
-                    }}
-                  />
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
+                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-blue-600 shadow-sm">
+                    <img 
+                      src={content.logoImage || "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png"} 
+                      alt="Dalligo Logo" 
+                      className="w-full h-full object-contain p-1"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        const fallback = "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png";
+                        if (target.src !== fallback) {
+                          target.src = fallback;
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-2xl font-black text-blue-900 tracking-tighter leading-none" translate="no">{content.logoText || "달리고 탁송"}</span>
+                    <span className="text-[10px] font-bold text-orange-500 tracking-widest uppercase" translate="no">Dalligo Consignment</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-2xl font-black text-blue-900 tracking-tighter leading-none" translate="no">{content.logoText || "달리고 탁송"}</span>
-                  <span className="text-[10px] font-bold text-orange-500 tracking-widest uppercase" translate="no">Dalligo Consignment</span>
-                </div>
-              </div>
-              
-              <div className="hidden md:flex items-center gap-10">
-                {[
-                  { name: content.navConsignment || '탁송서비스', page: 'consignmentService' },
-                  { name: content.navChauffeur || '대리운전', page: 'chauffeur' },
-                  { name: content.navScrap || '폐차/수출', page: 'scrapExport' },
-                  { name: content.navRecruitment || '기사모집', page: 'recruitment' },
-                  { name: content.navCustomerCenter || '고객센터', page: 'customerCenter' }
-                ].map((item) => (
-                  <button 
-                    key={item.name} 
-                    onClick={() => setCurrentPage(item.page as any)}
-                    className={`text-[15px] font-semibold transition-colors ${
-                      currentPage === item.page && item.page !== 'home' 
-                        ? 'text-blue-600' 
-                        : 'text-slate-600 hover:text-blue-600'
-                    }`}
-                  >
-                    <span>{item.name}</span>
-                  </button>
-                ))}
-              </div>
 
-              <div className="hidden md:flex items-center gap-6">
-                <div className="flex items-center gap-4 border-r border-slate-100 pr-6 mr-2">
+                <div className="hidden md:flex items-center gap-4 border-l border-slate-100 pl-8">
                   {user ? (
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col items-end">
@@ -246,6 +223,40 @@ export default function App() {
                     </button>
                   )}
                 </div>
+              </div>
+              
+              <div className="hidden md:flex items-center gap-10">
+                {[
+                  { name: content.navConsignment || '탁송서비스', page: 'consignmentService' },
+                  { name: content.navChauffeur || '대리운전', page: 'chauffeur' },
+                  { name: content.navRecruitment || '기사모집', page: 'recruitment' },
+                  { name: content.navCustomerCenter || '고객센터', page: 'customerCenter' }
+                ].map((item) => (
+                  <button 
+                    key={item.name} 
+                    onClick={() => setCurrentPage(item.page as any)}
+                    className={`text-[15px] font-semibold transition-colors ${
+                      currentPage === item.page && item.page !== 'home' 
+                        ? 'text-blue-600' 
+                        : 'text-slate-600 hover:text-blue-600'
+                    }`}
+                  >
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="hidden md:flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    setCurrentPage('chauffeurForm');
+                    setIsMenuOpen(false);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-blue-500/20"
+                >
+                  <span>{content.chauffeurFormHeroButtonLabel || "대리 신청하기"}</span>
+                </button>
+
                 <button 
                   onClick={() => {
                     setCurrentPage('consignmentForm');
@@ -305,7 +316,6 @@ export default function App() {
                 {[
                   { name: content.navConsignment || '탁송서비스', page: 'consignmentService' },
                   { name: content.navChauffeur || '대리운전', page: 'chauffeur' },
-                  { name: content.navScrap || '폐차/수출', page: 'scrapExport' },
                   { name: content.navRecruitment || '기사모집', page: 'recruitment' },
                   { name: content.navCustomerCenter || '고객센터', page: 'customerCenter' }
                 ].map((item) => (
@@ -325,15 +335,26 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <button 
-                onClick={() => {
-                  setCurrentPage('consignmentForm');
-                  setIsMenuOpen(false);
-                }}
-                className="w-full bg-[#FF9800] text-white py-4 rounded-xl font-bold text-lg"
-              >
-                {content.consignmentFormHeroButtonLabel || "탁송 신청하기"}
-              </button>
+              <div className="space-y-3">
+                <button 
+                  onClick={() => {
+                    setCurrentPage('chauffeurForm');
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg"
+                >
+                  {content.chauffeurFormHeroButtonLabel || "대리 신청하기"}
+                </button>
+                <button 
+                  onClick={() => {
+                    setCurrentPage('consignmentForm');
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full bg-[#FF9800] text-white py-4 rounded-xl font-bold text-lg"
+                >
+                  {content.consignmentFormHeroButtonLabel || "탁송 신청하기"}
+                </button>
+              </div>
             </div>
           )}
         </nav>
@@ -341,8 +362,6 @@ export default function App() {
 
       {currentPage === 'recruitment' ? (
         <DriverRecruitment key="recruitment" content={content} onConsult={() => setIsChatbotOpen(true)} />
-      ) : currentPage === 'scrapExport' ? (
-        <ScrapExport key="scrapExport" content={content} />
       ) : currentPage === 'consignmentForm' ? (
         <ConsignmentForm key="consignmentForm" content={content} onBack={() => setCurrentPage('home')} />
       ) : currentPage === 'consignmentService' ? (
@@ -447,32 +466,6 @@ export default function App() {
                   <Car className="w-64 h-64" />
                 </div>
                 <div className="absolute bottom-8 right-10 w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-blue-600 transition-all shadow-lg">
-                  <ChevronRight className="w-8 h-8" />
-                </div>
-              </motion.button>
-
-              <motion.button
-                onClick={() => setCurrentPage('scrapExport')}
-                animate={{ 
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ 
-                  duration: 4, 
-                  repeat: Infinity, 
-                  ease: "easeInOut",
-                  delay: 2
-                }}
-                className="w-full bg-slate-900 p-8 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl hover:shadow-orange-500/20 transition-all text-left group relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <span className="text-orange-400 font-black text-lg uppercase tracking-widest mb-3 block">Best Price</span>
-                  <h3 className="text-3xl lg:text-5xl font-black text-white mb-4 tracking-tighter">{content.heroScrapTitle || "폐차 신청"}</h3>
-                  <p className="text-lg lg:text-2xl text-slate-300 font-bold">{content.heroScrapDesc || "당일 최고가 시세 확인하기"}</p>
-                </div>
-                <div className="absolute top-1/2 -right-8 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity text-white">
-                  <Zap className="w-64 h-64" />
-                </div>
-                <div className="absolute bottom-8 right-10 w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-[#FF9800] group-hover:text-white transition-all shadow-lg">
                   <ChevronRight className="w-8 h-8" />
                 </div>
               </motion.button>
@@ -622,7 +615,7 @@ export default function App() {
       <section className="py-24 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
-            <h2 className="text-3xl lg:text-4xl font-black mb-4">{content.processTitle || "간편한 폐차 & 탁송 프로세스"}</h2>
+            <h2 className="text-3xl lg:text-4xl font-black mb-4">{content.processTitle || "간편한 탁송 프로세스"}</h2>
             <p className="text-slate-500 font-medium">전화 한 통으로 시작되는 빠르고 완벽한 서비스</p>
           </div>
 
@@ -673,7 +666,7 @@ export default function App() {
               <div>
                 <h4 className="font-bold text-slate-900 mb-8">{content.footerServiceTitle || "서비스 안내"}</h4>
                 <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                  {['일반 폐차 상담', '조기 폐차 신청', '수출 상담', '전국 탁송 요금표'].map(item => (
+                  {['전국 탁송 요금표', '대리운전 서비스', '기사 지원 안내'].map(item => (
                     <li key={item}><a href="#" className="hover:text-blue-600 transition-colors">{item}</a></li>
                   ))}
                 </ul>
@@ -717,13 +710,13 @@ export default function App() {
                 <div className="space-y-2">
                   <h5 className="text-[11px] font-black text-slate-700 uppercase tracking-wider">서비스 이용 안내 및 면책 고지</h5>
                   <p className="text-[10px] text-slate-400 leading-relaxed">
-                    달리고 탁송·대리는 국토교통부 정식 허가를 받은 '관허폐차장' 및 '수출 매입 전문 기업'과 협력하여 매입 중개 및 상담 서비스를 제공합니다. 실제 폐차 인수증명서 발행, 등록 말소, 대금 정산 등 실무적인 행정 처리는 해당 협력 업체의 책임 하에 진행되며, 당사는 중개자로서 협력사의 과실로 인한 분쟁에 대해서는 법적 책임이 없음을 알려드립니다.
+                    달리고 탁송·대리는 국토교통부 정식 허가를 받은 전문 기업과 협력하여 탁송 및 대리운전 중개 및 상담 서비스를 제공합니다. 실제 운송 업무는 해당 협력 업체의 책임 하에 진행되며, 당사는 중개자로서 협력사의 과실로 인한 분쟁에 대해서는 법적 책임이 없음을 알려드립니다.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <h5 className="text-[11px] font-black text-slate-700 uppercase tracking-wider">안전 거래 가이드</h5>
                   <p className="text-[10px] text-slate-400 leading-relaxed">
-                    당사는 안전한 거래를 위해 협력 업체의 자격을 상시 확인하고 있습니다. 고객님의 안전을 위해 차량 인도 전 반드시 매입 대금을 선입금 받으시길 강력히 권장하며, 압류 및 저당 조회를 미리 완료하시면 더욱 신속한 처리가 가능합니다.
+                    당사는 안전한 거래를 위해 협력 업체의 자격을 상시 확인하고 있습니다. 고객님의 안전을 위해 차량 인도 전 반드시 보험 가입 여부를 확인하시길 강력히 권장하며, 예약 시 정확한 위치 정보를 제공해 주시면 더욱 신속한 처리가 가능합니다.
                   </p>
                 </div>
               </div>
@@ -740,10 +733,26 @@ export default function App() {
         </footer>
       )}
 
-      {/* Floating Chat Button */}
+      {/* Mobile Sticky Call Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[55] bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+        <a 
+          href={`tel:${content.contactPhone.replace(/-/g, '')}`}
+          className="flex-1 bg-blue-600 text-white py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-lg shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
+        >
+          <PhoneCall className="w-6 h-6" /> 전화 상담
+        </a>
+        <button 
+          onClick={() => setIsChatbotOpen(true)}
+          className="w-16 h-16 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all"
+        >
+          <MessageCircle className="w-8 h-8" />
+        </button>
+      </div>
+
+      {/* Floating Chat Button (Desktop Only) */}
       <button 
         onClick={() => setIsChatbotOpen(true)}
-        className="fixed bottom-8 right-8 z-[60] w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 hover:scale-110 transition-all group"
+        className="hidden lg:flex fixed bottom-8 right-8 z-[60] w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl items-center justify-center hover:bg-blue-700 hover:scale-110 transition-all group"
         aria-label="실시간 상담"
       >
         <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />

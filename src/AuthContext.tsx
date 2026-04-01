@@ -199,14 +199,11 @@ const DEFAULT_CONTENT: AppContent = {
   logoText: "달리고",
   logoImage: "",
   navConsignment: "탁송서비스",
-  navScrap: "폐차/수출",
   navChauffeur: "대리운전",
   navRecruitment: "기사모집",
   navCustomerCenter: "고객센터",
   heroConsignmentTitle: "탁송 신청",
   heroConsignmentDesc: "실시간 전문가 1:1 상담 연결",
-  heroScrapTitle: "폐차 신청",
-  heroScrapDesc: "당일 최고가 시세 확인하기",
   heroChauffeurTitle: "대리 신청",
   heroChauffeurDesc: "신속하고 안전한 대리운전 서비스",
   // Consignment Page
@@ -265,28 +262,6 @@ const DEFAULT_CONTENT: AppContent = {
     { title: "간접 손해", description: "사고 발생 시 수리비 외의 대차료(렌트비), 영업 손실, 휴차 보상 등 간접적인 손해는 보상 범위에서 제외됩니다." }
   ],
 
-  // Scrap Page
-  scrapHeroTitle: "폐차/수출 서비스",
-  scrapHeroSubtitle: "당일 최고가 매입 및 신속한 말소 처리",
-  scrapFormTitle: "폐차/수출 무료 견적 신청",
-  scrapProcessTitle: "폐차/수출 진행 절차",
-  scrapGuideTitle: "폐차 시 필요 서류 안내",
-  scrapPriceTitle: "차종별 예상 매입 시세",
-  scrapBannerTitle: "소중한 내 차, 정직한 가격으로",
-  scrapBannerSubtitle: "복잡한 서류 절차부터 말소까지 한 번에",
-  scrapLegalNotice: [
-    { title: "서비스의 성격", description: "본 업체는 국토교통부 정식 허가를 받은 '자동차 해체 재활용업자(관허폐차장)' 및 '수출 매입 전문 기업'과 전략적 협력 관계를 맺고, 고객의 차량 처분을 돕는 매입 중개 및 상담 서비스를 제공합니다." },
-    { title: "책임의 한계", description: "\"달리고 탁송·대리\"는 차량 매입에 관한 정보 전달 및 연결 업무를 수행하며, 실제 폐차 인수증명서 발행, 자동차 등록 말소 처리, 매매 대금의 최종 정산 등 실무적인 계약 및 행정 처리는 해당 협력 업체(관허업체)의 책임 하에 진행됩니다." },
-    { title: "분쟁 해결", description: "차량의 상태 점검, 최종 매입 가격 결정 및 대금 지급과 관련된 직접적인 계약 관계는 고객님과 해당 협력사 간에 성립됩니다. 당사는 원활한 상담을 지원하나, 협력사의 개별적인 계약 위반이나 과실로 인한 분쟁에 대해서는 법적 책임이 없음을 알려드립니다." },
-    { title: "안전 가이드", description: "당사는 고객님의 안전한 거래를 위해 협력 업체의 사업자 등록증 및 영업사원증을 상시 확인하고 있으며, 고객님께서도 차량 인도 전 반드시 매입 대금을 선입금 받으시길 권장합니다." }
-  ],
-  scrapStrategicPoints: [
-    { title: "중개자 역할", description: "정식 관허업체로 연결해 드리는 중개 및 상담 서비스를 제공합니다." },
-    { title: "선입금 원칙", description: "차량 인도 전 매입 대금을 선입금 받아 사기 피해를 원천 차단합니다." },
-    { title: "행정 처리 주체", description: "말소 처리 및 증명서 발급은 협력 폐차장에서 직접 수행합니다." },
-    { title: "압류/저당 조회", description: "원활한 진행을 위해 신청 전 압류 및 저당 조회를 권장합니다." }
-  ],
-
   // Recruitment Page
   recruitmentHeroTitle: "달리고 기사 모집",
   recruitmentHeroSubtitle: "대한민국 No.1 탁송 플랫폼과 함께하세요",
@@ -307,6 +282,7 @@ const DEFAULT_CONTENT: AppContent = {
   chauffeurFormPriceTitle: "요금 정보",
   chauffeurFormVehicleTitle: "차량 정보",
   chauffeurFormSubmitLabel: "대리 신청하기",
+  chauffeurFormHeroButtonLabel: "대리 신청하기",
   chauffeurFormBannerButtonLabel: "대리 신청하기",
 
   // Footer Headers
@@ -366,8 +342,8 @@ const DEFAULT_CONTENT: AppContent = {
   steps: [
     { id: "01", title: "탁송 신청", desc: "차종 및 지역 정보 기반\n실시간 무료 견적 상담" },
     { id: "02", title: "현장픽업", desc: "원하는 시간과 장소로\n전문 기사가 방문하여 인수" },
-    { id: "03", title: "대금지급", desc: "차량 입고 즉시 확인 후\n협력사를 통해 당일 최고가 지급" },
-    { id: "04", title: "말소처리", desc: "협력 폐차장에서 말소 신고 대행 후\n증명서를 안전하게 전달" }
+    { id: "03", title: "안전운송", desc: "베테랑 기사가 목적지까지\n안전하게 차량을 운송합니다" },
+    { id: "04", title: "운송완료", desc: "목적지 도착 후 차량 상태 확인 및\n고객님께 최종 인도 완료" }
   ],
   pricingConditions: [
     { title: "요금 변동", description: "야간, 주말, 공휴일 및 기상 악화 시 기본 요금 대비 1~2만 원의 할증이 적용될 수 있습니다." },
@@ -472,13 +448,11 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           processTitle: s(rawData.processTitle, DEFAULT_CONTENT.processTitle),
           bannerTitle: s(rawData.bannerTitle, DEFAULT_CONTENT.bannerTitle),
           navConsignment: s(rawData.navConsignment, DEFAULT_CONTENT.navConsignment),
-          navScrap: s(rawData.navScrap, DEFAULT_CONTENT.navScrap),
+          navChauffeur: s(rawData.navChauffeur, DEFAULT_CONTENT.navChauffeur),
           navRecruitment: s(rawData.navRecruitment, DEFAULT_CONTENT.navRecruitment),
           navCustomerCenter: s(rawData.navCustomerCenter, DEFAULT_CONTENT.navCustomerCenter),
           heroConsignmentTitle: s(rawData.heroConsignmentTitle, DEFAULT_CONTENT.heroConsignmentTitle),
           heroConsignmentDesc: s(rawData.heroConsignmentDesc, DEFAULT_CONTENT.heroConsignmentDesc),
-          heroScrapTitle: s(rawData.heroScrapTitle, DEFAULT_CONTENT.heroScrapTitle),
-          heroScrapDesc: s(rawData.heroScrapDesc, DEFAULT_CONTENT.heroScrapDesc),
           heroChauffeurTitle: s(rawData.heroChauffeurTitle, DEFAULT_CONTENT.heroChauffeurTitle),
           heroChauffeurDesc: s(rawData.heroChauffeurDesc, DEFAULT_CONTENT.heroChauffeurDesc),
           // Consignment Page
@@ -508,29 +482,6 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
           // Chauffeur Page
           chauffeurHeroTitle: s(rawData.chauffeurHeroTitle, DEFAULT_CONTENT.chauffeurHeroTitle),
-          chauffeurHeroSubtitle: s(rawData.chauffeurHeroSubtitle, DEFAULT_CONTENT.chauffeurHeroSubtitle),
-          chauffeurBadgeText: s(rawData.chauffeurBadgeText, DEFAULT_CONTENT.chauffeurBadgeText),
-          chauffeurFeaturesTitle: s(rawData.chauffeurFeaturesTitle, DEFAULT_CONTENT.chauffeurFeaturesTitle),
-          chauffeurProcessTitle: s(rawData.chauffeurProcessTitle, DEFAULT_CONTENT.chauffeurProcessTitle),
-          chauffeurBannerTitle: s(rawData.chauffeurBannerTitle, DEFAULT_CONTENT.chauffeurBannerTitle),
-          chauffeurBannerSubtitle: s(rawData.chauffeurBannerSubtitle, DEFAULT_CONTENT.chauffeurBannerSubtitle),
-          chauffeurPricingTitle: s(rawData.chauffeurPricingTitle, DEFAULT_CONTENT.chauffeurPricingTitle),
-          chauffeurPricingTable: (rawData.chauffeurPricingTable && Array.isArray(rawData.chauffeurPricingTable) && rawData.chauffeurPricingTable.length > 0) ? rawData.chauffeurPricingTable : DEFAULT_CONTENT.chauffeurPricingTable,
-          chauffeurPricingConditions: (rawData.chauffeurPricingConditions && Array.isArray(rawData.chauffeurPricingConditions) && rawData.chauffeurPricingConditions.length > 0) ? rawData.chauffeurPricingConditions : DEFAULT_CONTENT.chauffeurPricingConditions,
-          chauffeurCancellationPolicy: (rawData.chauffeurCancellationPolicy && Array.isArray(rawData.chauffeurCancellationPolicy) && rawData.chauffeurCancellationPolicy.length > 0) ? rawData.chauffeurCancellationPolicy : DEFAULT_CONTENT.chauffeurCancellationPolicy,
-          chauffeurExemptionClauses: (rawData.chauffeurExemptionClauses && Array.isArray(rawData.chauffeurExemptionClauses) && rawData.chauffeurExemptionClauses.length > 0) ? rawData.chauffeurExemptionClauses : DEFAULT_CONTENT.chauffeurExemptionClauses,
-
-          // Scrap Page
-          scrapHeroTitle: s(rawData.scrapHeroTitle, DEFAULT_CONTENT.scrapHeroTitle),
-          scrapHeroSubtitle: s(rawData.scrapHeroSubtitle, DEFAULT_CONTENT.scrapHeroSubtitle),
-          scrapFormTitle: s(rawData.scrapFormTitle, DEFAULT_CONTENT.scrapFormTitle),
-          scrapProcessTitle: s(rawData.scrapProcessTitle, DEFAULT_CONTENT.scrapProcessTitle),
-          scrapGuideTitle: s(rawData.scrapGuideTitle, DEFAULT_CONTENT.scrapGuideTitle),
-          scrapPriceTitle: s(rawData.scrapPriceTitle, DEFAULT_CONTENT.scrapPriceTitle),
-          scrapBannerTitle: s(rawData.scrapBannerTitle, DEFAULT_CONTENT.scrapBannerTitle),
-          scrapBannerSubtitle: s(rawData.scrapBannerSubtitle, DEFAULT_CONTENT.scrapBannerSubtitle),
-          scrapLegalNotice: (rawData.scrapLegalNotice && Array.isArray(rawData.scrapLegalNotice) && rawData.scrapLegalNotice.length > 0) ? rawData.scrapLegalNotice : DEFAULT_CONTENT.scrapLegalNotice,
-          scrapStrategicPoints: (rawData.scrapStrategicPoints && Array.isArray(rawData.scrapStrategicPoints) && rawData.scrapStrategicPoints.length > 0) ? rawData.scrapStrategicPoints : DEFAULT_CONTENT.scrapStrategicPoints,
 
           // Recruitment Page
           recruitmentHeroTitle: s(rawData.recruitmentHeroTitle, DEFAULT_CONTENT.recruitmentHeroTitle),
@@ -654,23 +605,10 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const fixedContent = {
         ...DEFAULT_CONTENT,
         // Global Navigation
-        navScrap: "폐차/수출",
         
         // Home Page Hero
-        heroScrapTitle: "폐차 신청",
-        heroScrapDesc: "당일 최고가 시세 확인하기",
         heroChauffeurTitle: "대리 신청",
         heroChauffeurDesc: "신속하고 안전한 대리운전 서비스",
-        
-        // Scrap Page
-        scrapHeroTitle: "폐차/수출 서비스",
-        scrapHeroSubtitle: "당일 최고가 매입 및 신속한 말소 처리",
-        scrapFormTitle: "폐차/수출 무료 견적 신청",
-        scrapProcessTitle: "폐차/수출 진행 절차",
-        scrapGuideTitle: "폐차 시 필요 서류 안내",
-        scrapPriceTitle: "차종별 예상 매입 시세",
-        scrapBannerTitle: "소중한 내 차, 정직한 가격으로",
-        scrapBannerSubtitle: "복잡한 서류 절차부터 말소까지 한 번에",
         
         // Consignment Form Labels - HARD RESET to fix user reported "corrupted" labels
         consignmentFormClientTitle: "의뢰인 정보(연락처)",
