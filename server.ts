@@ -13,92 +13,45 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Telegram Notification API
+  // 텔레그램 알림 API (새로운 번호 010-2461-1614 전용)
   app.post("/api/notify", async (req, res) => {
     const { type, data } = req.body;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
-    // Diagnostic logging
-    console.log("--- Notification Request Diagnostic ---");
-    console.log("Type:", type);
-    console.log("Environment Variables Check:");
-    console.log("- TELEGRAM_BOT_TOKEN exists:", !!botToken);
-    if (botToken) {
-      console.log("- TELEGRAM_BOT_TOKEN prefix:", botToken.substring(0, 4) + "...");
-    }
-    console.log("- TELEGRAM_CHAT_ID exists:", !!chatId);
-    if (chatId) {
-      console.log("- TELEGRAM_CHAT_ID value:", chatId);
-    }
-
+    // 환경 변수 체크 (보안)
     if (!botToken || !chatId) {
-      console.error("CRITICAL: Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.");
-      return res.status(500).json({ 
-        success: false, 
-        error: "Notification configuration error",
-        details: { hasToken: !!botToken, hasChatId: !!chatId }
-      });
+      console.error("텔레그램 설정(Secrets)이 누락되었습니다.");
+      return res.status(500).json({ success: false, error: "설정 오류" });
     }
 
-    // Message generation
-    let message = "";
-    
-    if (type === "consignment") {
-      message = `[달리고 탁송접수 알림]\n`
-              + `👤 신청인: ${data.user_name} (${data.user_phone})\n`
-              + `🚗 차량정보: ${data.car_model} (${data.car_number})\n`
-              + `🔑 키위치: ${data.key_location}\n`
-              + `⚙️ 상세정보: ${data.transmission} / ${data.fuel_type} / 운행${data.drivable}\n`
-              + `🛡️ 상태: 사고${data.accident} / 귀중품${data.valuables}\n`
-              + `✨ 컨디션: 실내(${data.interior_condition}) / 외관(${data.exterior_condition})\n`
-              + `⛽ 주유량: ${data.current_fuel}\n`
-              + `📍 출발지: ${data.start_addr} (${data.start_phone || '연락처 없음'})\n`
-              + `🛑 경유지: ${data.via_addr || '없음'} (${data.via_phone || '없음'})\n`
-              + `🏁 도착지: ${data.end_addr} (${data.end_phone || '연락처 없음'})\n`
-              + `📝 요청사항: ${data.user_memo || '없음'}`;
-    } else if (type === "chauffeur") {
-      message = `[달리고 대리운전 접수]\n`
-              + `👤 신청인: ${data.user_name || '비회원'} (${data.user_phone || data.phone})\n`
-              + `📍 출발지: ${data.start_addr || data.start} (${data.start_phone || '연락처 없음'})\n`
-              + `🛑 경유지: ${data.via_addr || '없음'} (${data.via_phone || '없음'})\n`
-              + `🏁 도착지: ${data.end_addr || data.end} (${data.end_phone || '연락처 없음'})\n`
-              + `📝 요청사항: ${data.user_memo || '없음'}`;
-    }
+    // 메시지 포맷 구성 (요청하신 형식 적용)
+    const typeName = type === "consignment" ? "탁송" : "대리";
+    const userName = data.user_name || '비회원';
+    const userPhone = data.user_phone || data.phone || '연락처 없음';
+    const startAddr = data.start_addr || data.start || '미입력';
+    const endAddr = data.end_addr || data.end || '미입력';
 
-    if (!message) {
-      console.warn("Warning: No message generated for type:", type);
-      return res.json({ success: true, message: "No message to send" });
-    }
-
-    console.log("Generated Message Content:\n", message);
+    const message = `[달리고.kr 신규 접수]\n\n`
+                  + `📌 신청유형: ${typeName}\n`
+                  + `👤 고객명: ${userName}\n`
+                  + `📞 연락처: ${userPhone}\n`
+                  + `📍 출발지: ${startAddr}\n`
+                  + `🏁 도착지: ${endAddr}\n`
+                  + `📝 요청사항: ${data.user_memo || '없음'}`;
 
     try {
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-      console.log(`Sending Telegram notification to Chat ID: ${chatId}...`);
-      
-      const response = await axios.post(url, {
+      await axios.post(url, {
         chat_id: chatId,
         text: message
       });
-      
-      console.log("Telegram API Response:", response.data);
+      console.log(`${typeName} 알림 전송 성공!`);
       res.json({ success: true });
     } catch (error: any) {
-      const errorData = error.response?.data;
-      console.error("TELEGRAM API ERROR:", {
-        status: error.response?.status,
-        message: error.message,
-        telegramError: errorData,
-        chatId: chatId
-      });
-      res.status(500).json({ 
-        success: false, 
-        error: "Failed to send notification",
-        details: errorData || error.message
-      });
+      console.error("알림 전송 실패:", error.response?.data || error.message);
+      res.status(500).json({ success: false, error: "전송 실패" });
     }
-    console.log("--- End of Diagnostic ---");
   });
 
   // Vite middleware for development
