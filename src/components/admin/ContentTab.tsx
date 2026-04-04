@@ -868,17 +868,6 @@ const ContentTab: React.FC<ContentTabProps> = React.memo(({ localContent, update
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>폐차 메뉴 라벨</span></label>
-            <input 
-              type="text" 
-              value={formData.navScrap || ""}
-              onChange={(e) => handleLocalChange('navScrap', e.target.value)}
-              onBlur={(e) => handleBlur('navScrap', e.target.value)}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-xl py-3 px-4 outline-none transition-all font-bold"
-              translate="no"
-            />
-          </div>
-          <div className="space-y-2">
             <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>기사모집 메뉴 라벨</span></label>
             <input 
               type="text" 
@@ -923,23 +912,23 @@ const ContentTab: React.FC<ContentTabProps> = React.memo(({ localContent, update
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>폐차 신청 버튼 제목</span></label>
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>기사 신청 버튼 제목</span></label>
             <input 
               type="text" 
-              value={formData.heroScrapTitle || ""}
-              onChange={(e) => handleLocalChange('heroScrapTitle', e.target.value)}
-              onBlur={(e) => handleBlur('heroScrapTitle', e.target.value)}
+              value={formData.heroRecruitmentTitle || ""}
+              onChange={(e) => handleLocalChange('heroRecruitmentTitle', e.target.value)}
+              onBlur={(e) => handleBlur('heroRecruitmentTitle', e.target.value)}
               className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-xl py-3 px-4 outline-none transition-all font-bold"
               translate="no"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>폐차 신청 버튼 설명</span></label>
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest"><span>기사 신청 버튼 설명</span></label>
             <input 
               type="text" 
-              value={formData.heroScrapDesc || ""}
-              onChange={(e) => handleLocalChange('heroScrapDesc', e.target.value)}
-              onBlur={(e) => handleBlur('heroScrapDesc', e.target.value)}
+              value={formData.heroRecruitmentDesc || ""}
+              onChange={(e) => handleLocalChange('heroRecruitmentDesc', e.target.value)}
+              onBlur={(e) => handleBlur('heroRecruitmentDesc', e.target.value)}
               className="w-full bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-xl py-3 px-4 outline-none transition-all font-bold"
               translate="no"
             />

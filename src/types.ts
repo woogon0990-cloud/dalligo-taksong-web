@@ -79,6 +79,8 @@ export interface AppContent {
   heroConsignmentDesc?: string;
   heroChauffeurTitle?: string;
   heroChauffeurDesc?: string;
+  heroRecruitmentTitle?: string;
+  heroRecruitmentDesc?: string;
   // New fields for all pages
   // Consignment Page
   consignmentHeroTitle?: string;

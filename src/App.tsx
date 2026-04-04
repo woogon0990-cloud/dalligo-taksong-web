@@ -483,6 +483,32 @@ export default function App() {
                   <ChevronRight className="w-8 h-8" />
                 </div>
               </motion.button>
+
+              <motion.button
+                onClick={() => setCurrentPage('recruitment')}
+                animate={{ 
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{ 
+                  duration: 4, 
+                  repeat: Infinity, 
+                  ease: "easeInOut",
+                  delay: 2
+                }}
+                className="w-full bg-slate-900 p-8 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl hover:shadow-slate-500/20 transition-all text-left group relative overflow-hidden"
+              >
+                <div className="relative z-10">
+                  <span className="text-slate-400 font-black text-lg uppercase tracking-widest mb-3 block">Join Us</span>
+                  <h3 className="text-3xl lg:text-5xl font-black text-white mb-4 tracking-tighter">{content.heroRecruitmentTitle || "기사 신청"}</h3>
+                  <p className="text-lg lg:text-2xl text-slate-400 font-bold opacity-80">{content.heroRecruitmentDesc || "함께 성장할 베테랑 기사님을 모십니다"}</p>
+                </div>
+                <div className="absolute top-1/2 -right-8 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity text-white">
+                  <HardHat className="w-64 h-64" />
+                </div>
+                <div className="absolute bottom-8 right-10 w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all shadow-lg">
+                  <ChevronRight className="w-8 h-8" />
+                </div>
+              </motion.button>
             </div>
 
             <motion.div 

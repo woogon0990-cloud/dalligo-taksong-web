@@ -206,6 +206,8 @@ const DEFAULT_CONTENT: AppContent = {
   heroConsignmentDesc: "실시간 전문가 1:1 상담 연결",
   heroChauffeurTitle: "대리 신청",
   heroChauffeurDesc: "신속하고 안전한 대리운전 서비스",
+  heroRecruitmentTitle: "기사 신청",
+  heroRecruitmentDesc: "함께 성장할 베테랑 기사님을 모십니다",
   // Consignment Page
   consignmentHeroTitle: "탁송 서비스",
   consignmentHeroSubtitle: "전국 어디든 안전하고 신속하게",
@@ -455,6 +457,8 @@ export const ContentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           heroConsignmentDesc: s(rawData.heroConsignmentDesc, DEFAULT_CONTENT.heroConsignmentDesc),
           heroChauffeurTitle: s(rawData.heroChauffeurTitle, DEFAULT_CONTENT.heroChauffeurTitle),
           heroChauffeurDesc: s(rawData.heroChauffeurDesc, DEFAULT_CONTENT.heroChauffeurDesc),
+          heroRecruitmentTitle: s(rawData.heroRecruitmentTitle, DEFAULT_CONTENT.heroRecruitmentTitle),
+          heroRecruitmentDesc: s(rawData.heroRecruitmentDesc, DEFAULT_CONTENT.heroRecruitmentDesc),
           // Consignment Page
           consignmentHeroTitle: s(rawData.consignmentHeroTitle, DEFAULT_CONTENT.consignmentHeroTitle),
           consignmentHeroSubtitle: s(rawData.consignmentHeroSubtitle, DEFAULT_CONTENT.consignmentHeroSubtitle),
