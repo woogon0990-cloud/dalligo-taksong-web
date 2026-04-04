@@ -16,8 +16,13 @@ async function startServer() {
   // Telegram Notification API
   app.post("/api/notify", async (req, res) => {
     const { type, data } = req.body;
-    const botToken = "8748254665:AAEzCVgfg9aigHYDBj-0qksOz9JzzicwlO0";
-    const chatId = "8786847016";
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+
+    if (!botToken || !chatId) {
+      console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.");
+      return res.status(500).json({ success: false, error: "Notification configuration error" });
+    }
 
     // Message generation
     let message = "";
