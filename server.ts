@@ -19,9 +19,15 @@ async function startServer() {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
+    console.log("Notification Request Received:", { type, hasToken: !!botToken, hasChatId: !!chatId });
+
     if (!botToken || !chatId) {
       console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.");
-      return res.status(500).json({ success: false, error: "Notification configuration error" });
+      return res.status(500).json({ 
+        success: false, 
+        error: "Notification configuration error",
+        details: { hasToken: !!botToken, hasChatId: !!chatId }
+      });
     }
 
     // Message generation
@@ -55,16 +61,26 @@ async function startServer() {
 
     try {
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      console.log("Sending Telegram notification...");
       const response = await axios.post(url, {
         chat_id: chatId,
         text: message
       });
       
-      console.log("Telegram Response:", response.data);
+      console.log("Telegram Response Success:", response.data);
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Failed to send Telegram notification:", error.response?.data || error.message);
-      res.status(500).json({ success: false, error: "Failed to send notification" });
+      const errorData = error.response?.data;
+      console.error("Failed to send Telegram notification:", {
+        message: error.message,
+        telegramError: errorData,
+        chatId: chatId
+      });
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to send notification",
+        details: errorData || error.message
+      });
     }
   });
 
