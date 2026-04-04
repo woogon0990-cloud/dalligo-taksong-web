@@ -43,6 +43,8 @@ import AdminDashboard from './components/AdminDashboard';
 import PopupManager from './components/PopupManager';
 import Chatbot from './components/Chatbot';
 import { useAuth, useContent } from './AuthContext';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { Capacitor } from '@capacitor/core';
 
 const ICON_MAP: Record<string, React.FC<any>> = {
   Truck,
@@ -89,6 +91,18 @@ export default function App() {
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [isLoadingImage, setIsLoadingImage] = useState(true);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+
+  // Hiding the splash screen when the app is ready
+  useEffect(() => {
+    const hideSplash = async () => {
+      try {
+        await SplashScreen.hide();
+      } catch (e) {
+        // Not running in Capacitor
+      }
+    };
+    hideSplash();
+  }, []);
 
   // Auto-redirect after login
   useEffect(() => {
@@ -159,7 +173,7 @@ export default function App() {
       {currentPage !== 'admin' && (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-20">
+            <div className="flex justify-between items-center h-16 md:h-20">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
                   <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-blue-600 shadow-sm">
@@ -642,7 +656,7 @@ export default function App() {
 
       {/* Footer */}
       {currentPage !== 'admin' && (
-        <footer className="bg-slate-50 border-t border-slate-100 pt-20 pb-12">
+        <footer className="bg-slate-50 border-t border-slate-100 pt-10 md:pt-20 pb-24 md:pb-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                 <div className="col-span-1 lg:col-span-1">
@@ -750,16 +764,18 @@ export default function App() {
       </div>
 
       {/* Floating Chat Button (Desktop Only) */}
-      <button 
-        onClick={() => setIsChatbotOpen(true)}
-        className="hidden lg:flex fixed bottom-8 right-8 z-[60] w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl items-center justify-center hover:bg-blue-700 hover:scale-110 transition-all group"
-        aria-label="실시간 상담"
-      >
-        <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
-          LIVE
-        </span>
-      </button>
+      {!Capacitor.isNativePlatform() && (
+        <button 
+          onClick={() => setIsChatbotOpen(true)}
+          className="hidden lg:flex fixed bottom-8 right-8 z-[60] w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl items-center justify-center hover:bg-blue-700 hover:scale-110 transition-all group"
+          aria-label="실시간 상담"
+        >
+          <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
+            LIVE
+          </span>
+        </button>
+      )}
 
       {/* Chatbot */}
       <Chatbot 

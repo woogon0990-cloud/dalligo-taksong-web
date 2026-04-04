@@ -10,12 +10,12 @@ export async function generateTransportImage() {
   const ai = new GoogleGenAI({ apiKey });
   
   const prompts = [
-    'A professional high-quality photo of a modern car carrier truck transporting several new cars on a clean highway during a bright day. Cinematic lighting, commercial photography style.',
-    'A large cargo ship at a busy port being loaded with hundreds of export cars. Industrial maritime setting, sunset lighting, high resolution.',
-    'A fleet of white transport trucks parked in a modern logistics center. Aerial view, clean organized environment, professional business atmosphere.',
-    'A close-up of a luxury car being carefully loaded onto a flatbed tow truck for premium delivery. Focus on safety and professional handling.',
-    'A massive car carrier ship sailing on the open ocean under a clear blue sky. Wide angle shot, majestic and powerful feel.',
-    'A professional driver in uniform inspecting a vehicle before transport. Trustworthy atmosphere, modern equipment, bright daylight.'
+    'A professional high-quality photo of a young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, standing confidently next to a modern car carrier truck on a clean highway. Cinematic lighting, commercial photography style.',
+    'A young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, overseeing the loading of cars onto a large cargo ship at a busy port. Sunset lighting, industrial maritime setting, high resolution.',
+    'A professional young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, in a modern logistics center with a fleet of white transport trucks. Professional business atmosphere, bright daylight.',
+    'A young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, carefully inspecting a luxury car being loaded onto a flatbed tow truck. Focus on safety and professional handling.',
+    'A young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, standing on the deck of a massive car carrier ship on the open ocean. Wide angle shot, majestic and powerful feel.',
+    'A professional young Korean woman with top-tier actress visuals, long wavy brown hair, porcelain skin, and a slim, fit body, in a uniform, inspecting a vehicle before transport. Trustworthy atmosphere, modern equipment, bright daylight.'
   ];
 
   const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
