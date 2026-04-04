@@ -136,7 +136,8 @@ const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ onBack, content }) =>
     endAddress: '',
     endPhone: '',
     notes: '',
-    distance: ''
+    distance: '',
+    paymentMethod: '후불'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,6 +196,7 @@ const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ onBack, content }) =>
               via_phone: formData.viaPhone,
               end_addr: formData.endAddress,
               end_phone: formData.endPhone,
+              payment_method: formData.paymentMethod,
               user_memo: formData.notes
             }
           })
@@ -637,7 +639,34 @@ const ConsignmentForm: React.FC<ConsignmentFormProps> = ({ onBack, content }) =>
               </div>
             </div>
 
-            {/* Section 6: Notes & Instructions */}
+            {/* Section 6: Payment Info */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <h2 className="text-xl font-black text-slate-900">결제 정보</h2>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-500 ml-1">결제 방식</label>
+                <div className="grid grid-cols-2 gap-4">
+                  {['선불', '후불'].map(option => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, paymentMethod: option }))}
+                      className={`py-4 rounded-2xl font-bold transition-all border-2 ${
+                        formData.paymentMethod === option 
+                          ? 'bg-blue-50 border-blue-500 text-blue-600' 
+                          : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Section 7: Notes & Instructions */}
             <div className="space-y-6">
               <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
                 <MessageSquare className="w-5 h-5 text-slate-600" />

@@ -4,7 +4,8 @@ import path from "path";
 import axios from "axios";
 import dotenv from "dotenv";
 
-dotenv.config();
+// .env 파일 로드 (절대 경로 사용 및 기존 환경 변수 덮어쓰기)
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), override: true });
 
 async function startServer() {
   const app = express();
@@ -21,26 +22,62 @@ async function startServer() {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
+    console.log(`[Notify] 요청 수신 - 유형: ${type}`);
+
     if (!botToken || !chatId) {
-      console.error("텔레그램 설정 오류: TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.");
-      console.log("현재 설정된 토큰:", botToken ? "있음(보안상 숨김)" : "없음");
-      console.log("현재 설정된 채팅 ID:", chatId ? chatId : "없음");
-      return res.status(500).json({ success: false, error: "서버 설정 오류: 환경 변수가 비어있습니다." });
+      const errorMsg = "텔레그램 설정 오류: TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID가 설정되지 않았습니다.";
+      console.error(`[Notify] ${errorMsg}`);
+      return res.status(500).json({ 
+        success: false, 
+        error: "서버 설정 오류", 
+        details: "환경 변수가 비어있습니다. Settings 메뉴에서 토큰과 ID를 확인해 주세요." 
+      });
     }
 
     const typeName = type === "consignment" ? "탁송" : "대리";
     const userName = data.user_name || '비회원';
     const userPhone = data.user_phone || data.phone || '연락처 없음';
     const startAddr = data.start_addr || data.start || '미입력';
+    const startPhone = data.start_phone || '미입력';
+    const viaAddr = data.via_addr || '';
+    const viaPhone = data.via_phone || '';
     const endAddr = data.end_addr || data.end || '미입력';
+    const endPhone = data.end_phone || '미입력';
+    const paymentMethod = data.payment_method || '후불';
 
-    const message = `[달리고.kr 신규 접수]\n\n`
-                  + `📌 신청유형: ${typeName}\n`
-                  + `👤 고객명: ${userName}\n`
-                  + `📞 연락처: ${userPhone}\n`
-                  + `📍 출발지: ${startAddr}\n`
-                  + `🏁 도착지: ${endAddr}\n`
-                  + `📝 요청사항: ${data.user_memo || '없음'}`;
+    let message = `[달리고.kr 신규 접수]\n\n`
+                + `📌 신청유형: ${typeName}\n`
+                + `👤 고객명: ${userName}\n`
+                + `📞 연락처: ${userPhone}\n`
+                + `📍 출발지: ${startAddr} (${startPhone})\n`;
+
+    if (viaAddr) {
+      message += `🔄 경유지: ${viaAddr} (${viaPhone || '연락처 없음'})\n`;
+    }
+
+    message += `🏁 도착지: ${endAddr} (${endPhone})\n`
+             + `💰 결제방식: ${paymentMethod}\n`;
+
+    if (type === "consignment") {
+      message += `\n🚗 [차량 상세 정보]\n`
+               + `- 모델: ${data.car_model || '미입력'}\n`
+               + `- 번호: ${data.car_number || '미입력'}\n`
+               + `- 키위치: ${data.key_location || '미입력'}\n`
+               + `- 운행가능: ${data.drivable || '미입력'}\n`
+               + `- 유종: ${data.fuel_type || '미입력'}\n`
+               + `- 변속기: ${data.transmission || '미입력'}\n`
+               + `- 사고유무: ${data.accident || '미입력'}\n`
+               + `- 귀중품: ${data.valuables || '미입력'}\n`
+               + `- 실내상태: ${data.interior_condition || '미입력'}\n`
+               + `- 외관상태: ${data.exterior_condition || '미입력'}\n`
+               + `- 현재주유: ${data.current_fuel || '미입력'}\n`;
+    } else if (type === "chauffeur") {
+      message += `\n🚗 [차량 정보]\n`
+               + `- 모델: ${data.car_model || '미입력'}\n`
+               + `- 변속기: ${data.transmission || '오토'}\n`;
+    }
+
+    message += `\n📝 요청사항: ${data.user_memo || '없음'}`;
 
     try {
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;

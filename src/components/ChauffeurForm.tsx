@@ -91,10 +91,13 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
   
   const [formData, setFormData] = useState({
     clientPhone: '',
+    carModel: '',
     startAddress: '',
     viaAddress: '',
     endAddress: '',
     transmission: '오토',
+    paymentMethod: '후불',
+    viaPhone: '',
     notes: ''
   });
 
@@ -135,9 +138,12 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
                     data: {
                       user_name: '비회원',
                       user_phone: formData.clientPhone,
+                      car_model: formData.carModel,
                       start_addr: formData.startAddress,
                       via_addr: formData.viaAddress,
+                      via_phone: formData.viaPhone,
                       end_addr: formData.endAddress,
+                      payment_method: formData.paymentMethod,
                       user_memo: formData.notes
                     }
                   })
@@ -264,17 +270,61 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
                 <ShieldCheck className="w-5 h-5 text-indigo-600" />
                 <h2 className="text-xl font-black text-slate-900">차량 정보</h2>
               </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 ml-1">차량 모델명</label>
+                  <div className="relative">
+                    <Car className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input 
+                      required
+                      type="text"
+                      name="carModel"
+                      value={formData.carModel}
+                      onChange={handleChange}
+                      placeholder="예: 그랜저, 아반떼"
+                      className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-2xl pl-14 pr-6 py-4 outline-none transition-all font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 ml-1">변속기 종류</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {['오토', '스틱'].map(option => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, transmission: option }))}
+                        className={`py-4 rounded-2xl font-bold transition-all border-2 ${
+                          formData.transmission === option 
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-600' 
+                            : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Payment Info */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
+                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                <h2 className="text-xl font-black text-slate-900">결제 정보</h2>
+              </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-500 ml-1">변속기 종류</label>
+                <label className="text-sm font-bold text-slate-500 ml-1">결제 방식</label>
                 <div className="grid grid-cols-2 gap-4">
-                  {['오토', '스틱'].map(option => (
+                  {['선불', '후불'].map(option => (
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, transmission: option }))}
+                      onClick={() => setFormData(prev => ({ ...prev, paymentMethod: option }))}
                       className={`py-4 rounded-2xl font-bold transition-all border-2 ${
-                        formData.transmission === option 
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-600' 
+                        formData.paymentMethod === option 
+                          ? 'bg-blue-50 border-blue-500 text-blue-600' 
                           : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'
                       }`}
                     >
@@ -285,7 +335,7 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
               </div>
             </div>
 
-            {/* Section 3: Departure Info */}
+            {/* Section 4: Departure Info */}
             <div className="space-y-6">
               <div className="flex items-center gap-3 pb-2 border-b border-slate-100">
                 <MapPin className="w-5 h-5 text-emerald-600" />
@@ -341,7 +391,7 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
                 <MapPin className="w-5 h-5 text-amber-600" />
                 <h2 className="text-xl font-black text-slate-900">경유지 정보 (선택사항)</h2>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-500 ml-1">경유지 주소</label>
                   <div className="relative">
@@ -355,6 +405,17 @@ const ChauffeurForm: React.FC<ChauffeurFormProps> = ({ onBack, content }) => {
                       className="w-full bg-slate-50 border-2 border-transparent focus:border-amber-600 focus:bg-white rounded-2xl pl-14 pr-6 py-4 outline-none transition-all font-medium"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 ml-1">경유지 연락처</label>
+                  <input 
+                    type="tel"
+                    name="viaPhone"
+                    value={formData.viaPhone}
+                    onChange={handleChange}
+                    placeholder="경유지 담당자 연락처"
+                    className="w-full bg-slate-50 border-2 border-transparent focus:border-amber-600 focus:bg-white rounded-2xl px-6 py-4 outline-none transition-all font-medium"
+                  />
                 </div>
               </div>
             </div>
