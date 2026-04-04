@@ -19,10 +19,21 @@ async function startServer() {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
-    console.log("Notification Request Received:", { type, hasToken: !!botToken, hasChatId: !!chatId });
+    // Diagnostic logging
+    console.log("--- Notification Request Diagnostic ---");
+    console.log("Type:", type);
+    console.log("Environment Variables Check:");
+    console.log("- TELEGRAM_BOT_TOKEN exists:", !!botToken);
+    if (botToken) {
+      console.log("- TELEGRAM_BOT_TOKEN prefix:", botToken.substring(0, 4) + "...");
+    }
+    console.log("- TELEGRAM_CHAT_ID exists:", !!chatId);
+    if (chatId) {
+      console.log("- TELEGRAM_CHAT_ID value:", chatId);
+    }
 
     if (!botToken || !chatId) {
-      console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.");
+      console.error("CRITICAL: Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.");
       return res.status(500).json({ 
         success: false, 
         error: "Notification configuration error",
@@ -56,22 +67,27 @@ async function startServer() {
     }
 
     if (!message) {
+      console.warn("Warning: No message generated for type:", type);
       return res.json({ success: true, message: "No message to send" });
     }
 
+    console.log("Generated Message Content:\n", message);
+
     try {
       const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-      console.log("Sending Telegram notification...");
+      console.log(`Sending Telegram notification to Chat ID: ${chatId}...`);
+      
       const response = await axios.post(url, {
         chat_id: chatId,
         text: message
       });
       
-      console.log("Telegram Response Success:", response.data);
+      console.log("Telegram API Response:", response.data);
       res.json({ success: true });
     } catch (error: any) {
       const errorData = error.response?.data;
-      console.error("Failed to send Telegram notification:", {
+      console.error("TELEGRAM API ERROR:", {
+        status: error.response?.status,
         message: error.message,
         telegramError: errorData,
         chatId: chatId
@@ -82,6 +98,7 @@ async function startServer() {
         details: errorData || error.message
       });
     }
+    console.log("--- End of Diagnostic ---");
   });
 
   // Vite middleware for development
