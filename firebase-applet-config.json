@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0710734035",
-  "appId": "1:503184270990:web:236794592a6b11148d8bdf",
-  "apiKey": "",
-  "authDomain": "gen-lang-client-0710734035.firebaseapp.com",
+  "projectId": "cosmic-flux-479001-c0",
+  "appId": "1:194576289952:web:eea41a1bc75502938cf9c5",
+  "apiKey": "AIzaSyCVNpH_BBjYOiyNzBZT0W7mp9J5bnJvitg",
+  "authDomain": "cosmic-flux-479001-c0.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-c8417f56-fb82-41f5-a069-8d7b3777246c",
-  "storageBucket": "gen-lang-client-0710734035.firebasestorage.app",
-  "messagingSenderId": "503184270990",
+  "storageBucket": "cosmic-flux-479001-c0.firebasestorage.app",
+  "messagingSenderId": "194576289952",
   "measurementId": ""
 }

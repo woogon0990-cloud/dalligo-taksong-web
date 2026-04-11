@@ -3,812 +3,769 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React, { useState, useEffect } from 'react';
 import { 
-  Truck, 
-  Car, 
-  Zap, 
-  Bus, 
-  Ship, 
-  HardHat, 
-  PhoneCall, 
-  MessageCircle, 
-  CheckCircle2,
-  Menu,
-  X,
-  ChevronRight,
-  Loader2,
-  User,
-  Settings,
-  Lock,
-  MapPin,
-  Navigation,
-  ShieldCheck,
-  ArrowLeft,
-  MessageSquare
+  Truck, Zap, 
+  Menu, X, 
+  UserCheck, PhoneCall,
+  UserPlus,
+  ShieldCheck, AlertCircle, CheckCircle2, Shield,
+  Car, Settings, ClipboardCheck, MapPin, Key, CreditCard,
+  ClipboardList, Info, User, Lock,
+  Anchor, Coins, ArrowLeft
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { generateTransportImage } from './services/imageService';
-import DriverRecruitment from './components/DriverRecruitment';
-import ConsignmentForm from './components/ConsignmentForm';
-import ConsignmentService from './components/ConsignmentService';
+import { useAuth } from './AuthContext';
+import { Link } from 'react-router-dom';
+import { AuthProvider } from './AuthContext';
+import { ContentProvider, EditableText, useContent } from './ContentContext';
+import { Routes, Route } from 'react-router-dom';
+import AdminDashboard from './components/AdminDashboard';
+import ReviewSection from './components/ReviewSection';
 import ConsignmentPriceTable from './components/ConsignmentPriceTable';
 import ChauffeurPriceTable from './components/ChauffeurPriceTable';
-import ChauffeurService from './components/ChauffeurService';
-import ChauffeurForm from './components/ChauffeurForm';
-import CustomerCenter from './components/CustomerCenter';
-import LoginPage from './components/LoginPage';
-import AdminDashboard from './components/AdminDashboard';
-import PopupManager from './components/PopupManager';
-import Chatbot from './components/Chatbot';
-import { useAuth, useContent } from './AuthContext';
-import { SplashScreen } from '@capacitor/splash-screen';
-import { Capacitor } from '@capacitor/core';
+import Footer from './components/Footer';
+import OrderFormInside from './components/OrderFormInside';
+import DriverApplicationForm from './components/DriverApplicationForm';
 
-const ICON_MAP: Record<string, React.FC<any>> = {
-  Truck,
-  Car,
-  Zap,
-  Bus,
-  Ship,
-  HardHat,
-  PhoneCall,
-  MessageCircle,
-  CheckCircle2,
-  Menu,
-  X,
-  ChevronRight,
-  Loader2,
-  User,
-  Settings,
-  Lock,
-  MapPin,
-  Navigation,
-  ShieldCheck,
-  ArrowLeft,
-  MessageSquare
-};
-
-const steps = [
-  { id: "01", title: "상담신청", desc: "차종 및 지역 정보 기반\n실시간 무료 견적 상담" },
-  { id: "02", title: "현장픽업", desc: "원하는 시간과 장소로\n전문 기사가 방문하여 인수" },
-  { id: "03", title: "안전운송", desc: "베테랑 기사가 목적지까지\n안전하게 차량을 운송합니다" },
-  { id: "04", title: "운송완료", desc: "목적지 도착 후 차량 상태 확인 및\n고객님께 최종 인도 완료" }
-];
-
-export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'recruitment' | 'consignmentForm' | 'consignmentService' | 'chauffeur' | 'chauffeurForm' | 'customerCenter' | 'login' | 'admin'>('home');
-  const { user, logout, isAdmin, isLoading: isAuthLoading } = useAuth();
-  const { content, isLoading: isContentLoading } = useContent();
-
-  useEffect(() => {
-    if (content) {
-      console.log("Current App Content:", content);
-    }
-  }, [content]);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [heroImage, setHeroImage] = useState<string | null>(null);
-  const [isLoadingImage, setIsLoadingImage] = useState(true);
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
-
-  // Hiding the splash screen when the app is ready
-  useEffect(() => {
-    const hideSplash = async () => {
-      try {
-        await SplashScreen.hide();
-      } catch (e) {
-        // Not running in Capacitor
-      }
-    };
-    hideSplash();
-  }, []);
-
-  // Auto-redirect after login
-  useEffect(() => {
-    if (user) {
-      if (currentPage === 'login') {
-        setCurrentPage('home');
-      }
-      // Admin page is handled by ternary in render
-    }
-  }, [user, currentPage]);
-
-  // Helper to render icon by name
-  const renderIcon = (iconName: string) => {
-    const IconComponent = ICON_MAP[iconName];
-    return IconComponent ? <IconComponent className="w-8 h-8" /> : <Car className="w-8 h-8" />;
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-    const timeoutId = setTimeout(() => {
-      if (isMounted) {
-        console.warn("Hero image generation timed out, using fallback.");
-        setIsLoadingImage(false);
-      }
-    }, 8000); // 8 second timeout for AI image
-
-    async function loadImage() {
-      try {
-        const img = await generateTransportImage();
-        if (isMounted) {
-          setHeroImage(img);
-        }
-      } catch (error) {
-        console.error("Failed to generate image:", error);
-      } finally {
-        if (isMounted) {
-          setIsLoadingImage(false);
-          clearTimeout(timeoutId);
-        }
-      }
-    }
-    loadImage();
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  const isDefaultHeroImage = content.heroImage === "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1280&q=75";
-  const displayHeroImage = isDefaultHeroImage ? (heroImage || content.heroImage) : content.heroImage;
-
-  // Global loading state
-  if (isAuthLoading || isContentLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-          <p className="text-slate-500 font-bold">시스템을 준비 중입니다...</p>
-        </div>
-      </div>
-    );
-  }
+const Navbar = ({ scrolled, isMenuOpen, setIsMenuOpen }: { scrolled: boolean, isMenuOpen: boolean, setIsMenuOpen: (open: boolean) => void }) => {
+  const { user, isAdmin, login, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">
-      <PopupManager />
-      {/* Navigation */}
-      {currentPage !== 'admin' && (
-        <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16 md:h-20">
-              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentPage('home')}>
-                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-blue-600 shadow-sm">
-                    <img 
-                      src={content.logoImage || "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png"} 
-                      alt="Dalligo Logo" 
-                      className="w-full h-full object-contain p-1"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        const fallback = "https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png";
-                        if (target.src !== fallback) {
-                          target.src = fallback;
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-2xl font-black text-blue-900 tracking-tighter leading-none" translate="no">{content.logoText || "달리고 탁송"}</span>
-                    <span className="text-[10px] font-bold text-orange-500 tracking-widest uppercase" translate="no">Dalligo Consignment</span>
-                  </div>
-                </div>
+    <nav className={`fixed w-full z-50 transition-all duration-500 ${scrolled ? 'bg-white py-3 shadow-xl' : 'bg-white/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none py-4 md:py-6'}`}>
+      <div className="container mx-auto px-6 flex justify-between items-center">
+        <div 
+          className="flex items-center gap-2 cursor-pointer group"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${scrolled ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white shadow-xl'}`}>
+            <Truck className={`w-6 h-6 transition-colors ${scrolled ? 'text-white' : 'text-blue-600'}`} />
+          </div>
+          <div className={`px-3 py-1 rounded-lg transition-all duration-300 ${!scrolled ? 'bg-white/10 md:backdrop-blur-md border border-slate-200 md:border-white/20' : ''}`}>
+            <span className={`text-2xl font-black tracking-tighter italic transition-colors duration-300 ${scrolled ? 'text-slate-900' : 'text-slate-900 md:text-white'}`}>
+              달리고 탁송
+            </span>
+          </div>
+        </div>
 
-                <div className="hidden md:flex items-center gap-4 border-l border-slate-100 pl-8">
-                  {user ? (
-                    <div className="flex items-center gap-4">
-                      <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest"><span>{user.role}</span></span>
-                        <span className="text-xs font-bold text-slate-900"><span>{user.email.split('@')[0]}님</span></span>
-                      </div>
-                      <button 
-                        onClick={logout}
-                        className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors"
-                      >
-                        <span>로그아웃</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => {
-                        setCurrentPage('login');
-                        setIsMenuOpen(false);
-                      }}
-                      className="flex flex-col items-center gap-0.5 text-slate-500 hover:text-blue-600 transition-colors group"
-                    >
-                      <User className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-bold"><span>로그인</span></span>
-                    </button>
-                  )}
-                  
-                  {isAdmin && (
-                    <button 
-                      onClick={() => {
-                        setCurrentPage('admin');
-                        setIsMenuOpen(false);
-                      }}
-                      className={`flex flex-col items-center gap-0.5 transition-colors group text-slate-500 hover:text-blue-600`}
-                    >
-                      <Settings className="w-5 h-5 group-hover:rotate-45 transition-transform" />
-                      <span className="text-[10px] font-bold"><span>관리자</span></span>
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              <div className="hidden md:flex items-center gap-10">
-                {[
-                  { name: content.navConsignment || '탁송서비스', page: 'consignmentService' },
-                  { name: content.navChauffeur || '대리운전', page: 'chauffeur' },
-                  { name: content.navRecruitment || '기사모집', page: 'recruitment' },
-                  { name: content.navCustomerCenter || '고객센터', page: 'customerCenter' }
-                ].map((item) => (
-                  <button 
-                    key={item.name} 
-                    onClick={() => setCurrentPage(item.page as any)}
-                    className={`text-[15px] font-semibold transition-colors ${
-                      currentPage === item.page && item.page !== 'home' 
-                        ? 'text-blue-600' 
-                        : 'text-slate-600 hover:text-blue-600'
-                    }`}
-                  >
-                    <span>{item.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="hidden md:flex items-center gap-4">
-                <button 
-                  onClick={() => {
-                    setCurrentPage('chauffeurForm');
-                    setIsMenuOpen(false);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-blue-500/20"
-                >
-                  <span>{content.chauffeurFormHeroButtonLabel || "대리 신청하기"}</span>
-                </button>
-
-                <button 
-                  onClick={() => {
-                    setCurrentPage('consignmentForm');
-                    setIsMenuOpen(false);
-                  }}
-                  className="bg-[#FF9800] hover:bg-[#F57C00] text-white px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-lg shadow-orange-500/20"
-                >
-                  <span>{content.consignmentFormHeroButtonLabel || "탁송 신청하기"}</span>
-                </button>
-              </div>
-
-              <div className="md:hidden">
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2">
-                  {isMenuOpen ? <X /> : <Menu />}
-                </button>
-              </div>
-            </div>
+        <div className="hidden md:flex items-center gap-8">
+          <div className="flex items-center gap-8">
+            {['서비스 안내', '이용 방법', '요금 문의', '취소 규정'].map((item) => (
+              <a 
+                key={item} 
+                href={`#${item.replace(' ', '')}`} 
+                className={`font-bold transition-all duration-300 text-sm hover:text-blue-600 ${scrolled ? 'text-slate-600' : 'text-slate-200'}`}
+              >
+                {item}
+              </a>
+            ))}
           </div>
 
-          {/* Mobile Menu */}
-          {isMenuOpen && (
-            <div className="md:hidden bg-white border-b border-slate-100 py-6 px-6 space-y-6">
-              <div className="flex justify-around items-center pb-4 border-b border-slate-50">
-                {user ? (
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{user.role}</span>
-                    <span className="text-sm font-bold text-slate-900">{user.email}</span>
-                    <button onClick={logout} className="text-xs text-red-500 font-bold mt-1">로그아웃</button>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      setCurrentPage('login');
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex flex-col items-center gap-1 text-slate-600"
-                  >
-                    <User className="w-6 h-6" />
-                    <span className="text-xs font-bold">로그인/가입</span>
-                  </button>
-                )}
-                
-                {isAdmin && (
-                  <button 
-                    onClick={() => {
-                      setCurrentPage('admin');
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex flex-col items-center gap-1 text-slate-600"
-                  >
-                    <Settings className="w-6 h-6" />
-                    <span className="text-xs font-bold">관리자</span>
-                  </button>
-                )}
-              </div>
-              <div className="space-y-4">
-                {[
-                  { name: content.navConsignment || '탁송서비스', page: 'consignmentService' },
-                  { name: content.navChauffeur || '대리운전', page: 'chauffeur' },
-                  { name: content.navRecruitment || '기사모집', page: 'recruitment' },
-                  { name: content.navCustomerCenter || '고객센터', page: 'customerCenter' }
-                ].map((item) => (
-                  <button 
-                    key={item.name} 
-                    onClick={() => {
-                      setCurrentPage(item.page as any);
-                      setIsMenuOpen(false);
-                    }}
-                    className={`block w-full text-left text-lg font-semibold transition-colors ${
-                      currentPage === item.page && item.page !== 'home' 
-                        ? 'text-blue-600' 
-                        : 'text-slate-700 hover:text-blue-600'
-                    }`}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-3">
-                <button 
-                  onClick={() => {
-                    setCurrentPage('chauffeurForm');
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg"
-                >
-                  {content.chauffeurFormHeroButtonLabel || "대리 신청하기"}
-                </button>
-                <button 
-                  onClick={() => {
-                    setCurrentPage('consignmentForm');
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full bg-[#FF9800] text-white py-4 rounded-xl font-bold text-lg"
-                >
-                  {content.consignmentFormHeroButtonLabel || "탁송 신청하기"}
-                </button>
+          <div className="flex items-center gap-5 border-l border-slate-200 pl-5 ml-2 h-6">
+            {user ? (
+              <button 
+                onClick={logout}
+                className={`flex items-center gap-2 transition-colors ${scrolled ? 'text-slate-600 hover:text-slate-900' : 'text-slate-300 hover:text-white'}`}
+                title="로그아웃"
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border overflow-hidden transition-colors ${scrolled ? 'bg-slate-100 border-slate-200' : 'bg-slate-800 border-slate-700'}`}>
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User size={16} className={scrolled ? 'text-slate-600' : 'text-slate-400'} />
+                  )}
+                </div>
+                <span className="text-xs font-bold hidden lg:block">로그아웃</span>
+              </button>
+            ) : (
+              <button 
+                onClick={login}
+                className={`flex items-center gap-2 font-bold transition-colors text-sm ${scrolled ? 'text-slate-600 hover:text-blue-600' : 'text-slate-300 hover:text-blue-400'}`}
+              >
+                <User size={18} />
+                <span>로그인</span>
+              </button>
+            )}
+
+            {isAdmin && (
+              <Link 
+                to="/admin" 
+                className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border shadow-sm ${scrolled ? 'bg-slate-50 border-slate-200 text-blue-600 hover:bg-blue-50' : 'bg-slate-800 border-slate-700 text-blue-400 hover:bg-slate-700'}`}
+                title="관리자 페이지"
+              >
+                <Lock size={18} />
+              </Link>
+            )}
+
+            <a href="tel:1844-1585" className={`px-6 py-2.5 rounded-full font-black transition-all shadow-lg flex items-center gap-2 text-sm ${scrolled ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200' : 'bg-white text-blue-600 hover:bg-slate-100 shadow-black/20'}`}>
+              <PhoneCall size={16} /> 1844-1585
+            </a>
+          </div>
+        </div>
+
+        <div className="md:hidden flex items-center gap-4">
+          {isAdmin && (
+            <Link to="/admin" className={scrolled ? 'text-blue-600' : 'text-blue-600'}>
+              <Lock size={20} />
+            </Link>
+          )}
+          <button className={scrolled ? 'text-slate-900' : 'text-slate-900'} onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
+      </div>
+      
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div className={`md:hidden absolute top-full left-0 w-full border-t p-6 shadow-2xl animate-in fade-in slide-in-from-top-4 ${scrolled ? 'bg-white border-slate-100' : 'bg-slate-900 border-slate-800'}`}>
+          <div className="flex flex-col gap-4">
+            {['서비스 안내', '이용 방법', '요금 문의', '취소 규정'].map((item) => (
+              <a 
+                key={item} 
+                href={`#${item.replace(' ', '')}`} 
+                className={`font-bold py-2 ${scrolled ? 'text-slate-600' : 'text-slate-300'}`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item}
+              </a>
+            ))}
+            <div className={`h-px my-2 ${scrolled ? 'bg-slate-100' : 'bg-slate-800'}`} />
+            <div className="flex items-center justify-between">
+              {user ? (
+                <button onClick={logout} className="text-slate-400 font-bold">로그아웃</button>
+              ) : (
+                <button onClick={login} className="text-blue-500 font-bold">로그인</button>
+              )}
+              <a href="tel:1844-1585" className={`font-black ${scrolled ? 'text-blue-600' : 'text-white'}`}>1844-1585</a>
+            </div>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+const DalligoMain = ({ onSelect }: { onSelect: (type: 'consignment' | 'chauffeur' | 'driver') => void }) => {
+  return (
+    <div className="w-full bg-black text-white overflow-hidden">
+      <div className="flex flex-col md:flex-row min-h-[80vh] w-full">
+        <div 
+          className="flex-1 group relative border-b md:border-b-0 md:border-r border-white/10 overflow-hidden cursor-pointer min-h-[300px]" 
+          onClick={() => onSelect('consignment')}
+        >
+          <div className="absolute inset-0 bg-black/60 group-hover:bg-black/20 transition-all duration-500" />
+          <div className="absolute inset-0 opacity-30 group-hover:opacity-50 transition-opacity duration-500">
+            <img 
+              src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=1000" 
+              alt="Consignment" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
+            <Truck className="w-16 h-16 mb-6 mx-auto text-[#C5A059]" />
+            <h2 className="text-4xl md:text-6xl font-black mb-4 text-[#C5A059] tracking-tighter">탁송신청</h2>
+            <p className="text-gray-400 font-bold text-lg">전국 100% 신속배차 전문</p>
+          </div>
+        </div>
+
+        <div 
+          className="flex-1 group relative border-b md:border-b-0 md:border-r border-white/10 overflow-hidden cursor-pointer min-h-[300px]" 
+          onClick={() => onSelect('chauffeur')}
+        >
+          <div className="absolute inset-0 bg-black/70 group-hover:bg-black/30 transition-all duration-500" />
+          <div className="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+            <img 
+              src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=1000" 
+              alt="Chauffeur" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
+            <UserCheck className="w-16 h-16 mb-6 mx-auto text-[#00E5FF]" />
+            <h2 className="text-4xl md:text-6xl font-black mb-4 text-[#00E5FF] tracking-tighter">대리신청</h2>
+            <p className="text-gray-400 font-bold text-lg">투명한 정찰제 안전 귀가</p>
+          </div>
+        </div>
+
+        <div 
+          className="flex-1 group relative overflow-hidden cursor-pointer min-h-[300px]" 
+          onClick={() => onSelect('driver')}
+        >
+          <div className="absolute inset-0 bg-black/80 group-hover:bg-black/40 transition-all duration-500" />
+          <div className="absolute inset-0 opacity-10 group-hover:opacity-30 transition-opacity duration-500">
+            <img 
+              src="https://images.unsplash.com/photo-1549194388-2469d59ec75c?auto=format&fit=crop&q=80&w=1000" 
+              alt="Driver" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
+            <UserPlus className="w-16 h-16 mb-6 mx-auto text-gray-300" />
+            <h2 className="text-4xl md:text-6xl font-black mb-4 text-gray-300 tracking-tighter">기사신청</h2>
+            <p className="text-gray-400 font-bold text-lg">최고의 대우 파트너 모집</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <ContentProvider>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+      </ContentProvider>
+    </AuthProvider>
+  );
+}
+
+interface Service {
+  title: string;
+  desc: string;
+  longDesc?: string;
+  icon: React.ElementType;
+  color: string;
+  tag: string;
+  image: string;
+  steps: string[];
+}
+
+const ServiceModal = ({ service, onClose }: { service: Service | null, onClose: () => void }) => {
+  if (!service) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+        {/* Clean Header without Image */}
+        <div className="p-8 md:p-10 border-b border-slate-100 flex justify-between items-start shrink-0">
+          <div>
+            <button 
+              onClick={onClose}
+              className="flex items-center gap-2 text-slate-400 hover:text-blue-600 font-black text-[10px] uppercase tracking-widest mb-4 transition-colors group"
+            >
+              <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+              홈으로 돌아가기
+            </button>
+            <span className="inline-block px-3 py-1 rounded-full bg-blue-50 text-[10px] font-black text-blue-600 mb-2 uppercase tracking-wider">
+              {service.tag}
+            </span>
+            <h3 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">{service.title}</h3>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-12 h-12 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-400 transition-all group"
+            title="닫기"
+          >
+            <X size={28} className="group-hover:rotate-90 transition-transform duration-300" />
+          </button>
+        </div>
+        
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar bg-white">
+          <div className="space-y-10">
+            {/* Description Section */}
+            <div className="space-y-6">
+              <h4 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Info className="text-blue-600" size={18} />
+                </div>
+                서비스 상세 안내
+              </h4>
+              <div className="bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-100">
+                <p className="text-slate-600 font-bold leading-[1.8] whitespace-pre-wrap text-base md:text-lg">
+                  {service.longDesc || service.desc}
+                </p>
               </div>
             </div>
-          )}
-        </nav>
-      )}
 
-      {currentPage === 'recruitment' ? (
-        <DriverRecruitment key="recruitment" content={content} onConsult={() => setIsChatbotOpen(true)} />
-      ) : currentPage === 'consignmentForm' ? (
-        <ConsignmentForm key="consignmentForm" content={content} onBack={() => setCurrentPage('home')} />
-      ) : currentPage === 'consignmentService' ? (
-        <ConsignmentService 
-          key="consignmentService" 
-          content={content} 
-          onConsult={() => setIsChatbotOpen(true)} 
-          onForm={() => setCurrentPage('consignmentForm')}
-        />
-      ) : currentPage === 'chauffeur' ? (
-        <ChauffeurService key="chauffeur" content={content} onConsult={() => setIsChatbotOpen(true)} onForm={() => setCurrentPage('chauffeurForm')} />
-      ) : currentPage === 'chauffeurForm' ? (
-        <ChauffeurForm key="chauffeurForm" onBack={() => setCurrentPage('home')} content={content} />
-      ) : currentPage === 'customerCenter' ? (
-        <CustomerCenter key="customerCenter" onBack={() => setCurrentPage('home')} />
-      ) : currentPage === 'login' ? (
-        <LoginPage key="login" />
-      ) : currentPage === 'admin' ? (
-        isAdmin ? <AdminDashboard key="admin" onBack={() => setCurrentPage('home')} /> : (user ? (
-          <div key="no-access" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center">
-              <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Lock className="w-8 h-8" />
+            {/* Steps Section */}
+            {service.steps && (
+              <div className="space-y-6">
+                <h4 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <ClipboardList className="text-blue-600" size={18} />
+                  </div>
+                  진행 절차
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {service.steps.map((step: string, idx: number) => (
+                    <div key={idx} className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col items-center text-center space-y-3 shadow-sm">
+                      <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-blue-100">
+                        {idx + 1}
+                      </div>
+                      <span className="text-xs font-black text-slate-800 leading-tight">{step}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <h2 className="text-2xl font-black text-slate-900 mb-2">접근 권한 없음</h2>
-              <p className="text-slate-500 font-medium mb-8">
-                관리자 계정({user.email})으로 로그인되어 있으나, 관리자 권한이 없습니다.<br />
-                개발자에게 문의해 주세요.
-              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer with Action Buttons */}
+        <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-orange-500 shadow-sm border border-slate-100">
+                <Coins size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Estimated Fare</p>
+                <p className="text-xl font-black text-slate-900">상담 후 확정</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 w-full md:w-auto">
               <button 
-                onClick={() => setCurrentPage('home')}
-                className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold"
+                onClick={onClose}
+                className="flex-1 md:flex-none px-8 py-4 bg-white text-slate-600 font-black rounded-2xl border border-slate-200 hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
               >
-                홈으로 돌아가기
+                <ArrowLeft size={18} />
+                홈으로
+              </button>
+              <button 
+                onClick={() => {
+                  onClose();
+                  document.getElementById('order-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex-[2] md:flex-none px-10 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
+              >
+                지금 바로 신청하기
               </button>
             </div>
           </div>
-        ) : <LoginPage key="login-fallback" />)
-      ) : (
-        <div key="home">
-          {/* Hero Section */}
-          <section className="relative pt-12 pb-20 lg:pt-24 lg:pb-32 overflow-hidden">
-            {content.heroImage && (
-              <div className="absolute inset-0 z-0">
-                <img 
-                  src={displayHeroImage} 
-                  alt="Hero Background" 
-                  className="w-full h-full object-cover opacity-10"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-white via-white/90 to-white" />
-              </div>
-            )}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
-            {/* Animated Connection Boxes */}
-            <div className="flex flex-col gap-6 justify-center order-1 lg:order-1">
-              <motion.button
-                onClick={() => setCurrentPage('consignmentForm')}
-                animate={{ 
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ 
-                  duration: 4, 
-                  repeat: Infinity, 
-                  ease: "easeInOut" 
-                }}
-                className="w-full bg-white border-4 border-blue-50 p-8 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl hover:shadow-blue-200/50 hover:border-blue-400 transition-all text-left group relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <span className="text-blue-600 font-black text-lg uppercase tracking-widest mb-3 block">Quick Service</span>
-                  <h3 className="text-3xl lg:text-5xl font-black text-slate-900 mb-4 tracking-tighter">{content.heroConsignmentTitle || "탁송 신청"}</h3>
-                  <p className="text-lg lg:text-2xl text-slate-500 font-bold">{content.heroConsignmentDesc || "실시간 전문가 1:1 상담 연결"}</p>
-                </div>
-                <div className="absolute top-1/2 -right-8 -translate-y-1/2 opacity-5 group-hover:opacity-10 transition-opacity">
-                  <Truck className="w-64 h-64" />
-                </div>
-                <div className="absolute bottom-8 right-10 w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg">
-                  <ChevronRight className="w-8 h-8" />
-                </div>
-              </motion.button>
-
-              <motion.button
-                onClick={() => setCurrentPage('chauffeurForm')}
-                animate={{ 
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ 
-                  duration: 4, 
-                  repeat: Infinity, 
-                  ease: "easeInOut",
-                  delay: 1
-                }}
-                className="w-full bg-blue-600 p-8 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl hover:shadow-blue-500/20 transition-all text-left group relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <span className="text-blue-100 font-black text-lg uppercase tracking-widest mb-3 block">Safe Drive</span>
-                  <h3 className="text-3xl lg:text-5xl font-black text-white mb-4 tracking-tighter">{content.heroChauffeurTitle || "대리 신청"}</h3>
-                  <p className="text-lg lg:text-2xl text-blue-100 font-bold opacity-80">{content.heroChauffeurDesc || "신속하고 안전한 대리운전 서비스"}</p>
-                </div>
-                <div className="absolute top-1/2 -right-8 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity text-white">
-                  <Car className="w-64 h-64" />
-                </div>
-                <div className="absolute bottom-8 right-10 w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-blue-600 transition-all shadow-lg">
-                  <ChevronRight className="w-8 h-8" />
-                </div>
-              </motion.button>
-
-              <motion.button
-                onClick={() => setCurrentPage('recruitment')}
-                animate={{ 
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ 
-                  duration: 4, 
-                  repeat: Infinity, 
-                  ease: "easeInOut",
-                  delay: 2
-                }}
-                className="w-full bg-slate-900 p-8 lg:p-10 rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl hover:shadow-slate-500/20 transition-all text-left group relative overflow-hidden"
-              >
-                <div className="relative z-10">
-                  <span className="text-slate-400 font-black text-lg uppercase tracking-widest mb-3 block">Join Us</span>
-                  <h3 className="text-3xl lg:text-5xl font-black text-white mb-4 tracking-tighter">{content.heroRecruitmentTitle || "기사 신청"}</h3>
-                  <p className="text-lg lg:text-2xl text-slate-400 font-bold opacity-80">{content.heroRecruitmentDesc || "함께 성장할 베테랑 기사님을 모십니다"}</p>
-                </div>
-                <div className="absolute top-1/2 -right-8 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity text-white">
-                  <HardHat className="w-64 h-64" />
-                </div>
-                <div className="absolute bottom-8 right-10 w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-all shadow-lg">
-                  <ChevronRight className="w-8 h-8" />
-                </div>
-              </motion.button>
-            </div>
-
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="order-2 lg:order-2 flex flex-col items-center text-center"
-            >
-              <span className="inline-block px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-sm font-bold mb-6">
-                전국 어디서나 24시간 상담 가능
-              </span>
-              <h1 className="text-4xl lg:text-5xl font-black leading-[1.2] tracking-tight mb-8" translate="no">
-                {content.heroTitle} <br />
-                {content.heroSubtitle.includes('입니다.') ? (
-                  <>
-                    <span className="text-blue-600">{content.heroSubtitle.replace('입니다.', '')}</span>
-                    <span className="text-slate-900">입니다.</span>
-                  </>
-                ) : (
-                  <span className="text-blue-600">{content.heroSubtitle}</span>
-                )}
-              </h1>
-              <div className="space-y-6 mb-12 max-w-2xl" translate="no">
-                {content.heroDescription.split('\n').filter(line => line.trim()).map((line, i) => {
-                  const [title, ...rest] = line.split(':');
-                  return (
-                    <motion.div 
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + i * 0.1 }}
-                      className="flex items-start gap-3 group text-left"
-                    >
-                      <div className="mt-1 bg-blue-50 p-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                        <CheckCircle2 className="w-5 h-5 text-blue-600 group-hover:text-white" />
-                      </div>
-                      <div className="text-lg lg:text-xl leading-relaxed">
-                        {rest.length > 0 ? (
-                          <p className="text-slate-600 font-medium">
-                            <span className="text-blue-600 font-black mr-2">{title}:</span>
-                            {rest.join(':')}
-                          </p>
-                        ) : (
-                          <p className="text-slate-600 font-medium">{line}</p>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-                <button 
-                  onClick={() => setCurrentPage('consignmentForm')}
-                  className="bg-[#FF9800] hover:bg-[#F57C00] text-white px-10 py-5 rounded-xl font-bold text-lg transition-all shadow-xl shadow-orange-500/30 flex items-center justify-center gap-2"
-                >
-                  {content.consignmentFormHeroButtonLabel || "탁송 신청하기"} <ChevronRight className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setIsChatbotOpen(true)}
-                  className="bg-white border-2 border-slate-100 px-10 py-5 rounded-xl font-bold text-lg hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-5 h-5 text-blue-600" /> 실시간 채팅 상담
-                </button>
-              </div>
-            </motion.div>
-          </div>
         </div>
-      </section>
+      </div>
+    </div>
+  );
+};
 
-      {/* Consignment Price Table */}
-      <ConsignmentPriceTable />
+function LandingPage() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [activeForm, setActiveForm] = useState<'none' | 'consignment' | 'chauffeur'>('none');
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-      {/* Chauffeur Price Table */}
-      <ChauffeurPriceTable />
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-      {/* Services Section */}
-      <section className="py-24 bg-slate-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16" translate="no">
-            <h2 className="text-3xl lg:text-4xl font-black mb-4">{content.servicesTitle || "믿을 수 있는 탁송 서비스"}</h2>
-            <p className="text-slate-500 font-medium">차종과 상황에 맞는 최적의 운송 솔루션을 제공합니다.</p>
+  useEffect(() => {
+    if (activeForm !== 'none') {
+      const element = document.getElementById('order-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [activeForm]);
+
+  const handleSelect = (type: 'consignment' | 'chauffeur' | 'driver') => {
+    if (type === 'driver') {
+      const element = document.getElementById('driver-application');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+    setActiveForm(type);
+  };
+
+  const { content, updateContent, isEditing } = useContent();
+  const { isAdmin } = useAuth();
+
+  const services: Service[] = [
+    { 
+      id: 'road',
+      title: '일반 탁송', 
+      desc: '전문 탁송 기사가 고객의 차량에 직접 탑승하여 목적지까지 운행하는 가장 보편적인 방식입니다.', 
+      longDesc: '로드 탁송은 전문 탁송 기사가 고객의 차량에 직접 탑승하여 목적지까지 운행하는 가장 보편적인 방식입니다.\n\n이 서비스는 시간과 장소의 제약이 적어 전국 어디서나 24시간 신속하게 배차할 수 있다는 장점이 있습니다. 주로 중고차 매매, 공항 픽업, 혹은 음주 후 차량만 집으로 보내야 하는 경우에 많이 이용됩니다.\n\n비용 면에서 가장 경제적이지만, 기사가 직접 주행하므로 차량의 주행거리(마일리지)가 필연적으로 증가하고 유류비 등 실비 발생 가능성을 고려해야 합니다.',
+      icon: Truck, 
+      color: 'bg-blue-50 text-blue-600',
+      tag: '경제성/신속성',
+      image: 'https://images.unsplash.com/photo-1506015391300-4802dc74de2e?auto=format&fit=crop&q=80&w=1000',
+      steps: ['실시간 접수', '기사 배정', '차량 인수/상태 체크', '목적지 안전 도착']
+    },
+    { 
+      id: 'carrier',
+      title: '캐리어 탁송', 
+      desc: '차량 전용 운반 트럭에 고객의 차량을 적재하여 운송하는 프리미엄 서비스입니다.', 
+      longDesc: '캐리어 탁송은 차량 전용 운반 트럭인 카캐리어(3~5카, 풀카 등)나 셀프카(세이프티 로더) 장비에 고객의 차량을 적재하여 운송하는 프리미엄 서비스입니다.\n\n차량을 싣고 이동하기 때문에 주행거리 증가가 0%에 가까워, 갓 출고된 신차나 주행 불능 상태의 사고/고장 차량, 혹은 타이어 마모를 최소화해야 하는 슈퍼카 운송에 최적화되어 있습니다.\n\n로드 탁송보다 약 50,000원 이상의 추가 비용이 발생하며, 대형 트럭이 진입하기 어려운 좁은 골목의 경우 인근 차고지까지 로드 탁송과 병행될 수 있습니다.',
+      icon: Car, 
+      color: 'bg-orange-50 text-orange-600',
+      tag: '슈퍼카/신차 전용',
+      image: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&q=80&w=1000',
+      steps: ['예약 접수', '캐리어 차량 배정', '상차 및 고정', '안전 운송 및 하차']
+    },
+    { 
+      id: 'selfloader',
+      title: '셀프로더 탁송', 
+      desc: '1대 전용 저상 셀프로더 차량으로 슈퍼카나 낮고 예민한 차량을 위한 맞춤형 운송입니다.', 
+      longDesc: '셀프로더 탁송은 1대 전용 저상 셀프로더(세이프티 로더) 차량을 이용하여 차량을 운송하는 방식입니다.\n\n지상고가 낮은 슈퍼카, 튜닝 차량, 혹은 고가의 수입차를 운송할 때 하부 손상을 방지하기 위해 사용됩니다. 차량 1대만을 전용으로 운송하므로 고객이 원하는 시간에 정확하게 맞춰 이동할 수 있는 맞춤형 서비스입니다.\n\n일반 캐리어보다 더 세심한 관리가 필요한 차량에 권장되며, 전문 장비를 갖춘 베테랑 기사가 직접 상/하차를 진행하여 안전성을 극대화합니다.',
+      icon: Settings, 
+      color: 'bg-purple-50 text-purple-600',
+      tag: '1대 전용/저상차',
+      image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&q=80&w=1000',
+      steps: ['차종 확인 및 상담', '셀프로더 배정', '정밀 상차 작업', '목적지 안전 인도']
+    },
+    { 
+      id: 'jeju',
+      title: '제주도 탁송', 
+      desc: '내륙에서 제주까지, 선박 선적부터 현지 인도까지 책임지는 원스톱 해상 운송 서비스입니다.', 
+      longDesc: '제주도 탁송은 내륙에서 제주도까지, 혹은 제주도에서 내륙으로 차량을 보내는 원스톱 운송 서비스입니다.\n\n고객의 집 앞에서 차량을 픽업하여 목포항, 부산항, 여수항 등 주요 항구로 이동시킨 뒤 배에 선적하고, 제주항 도착 후 다시 목적지까지 인도하는 복합적인 절차를 거칩니다. 기상 상황과 배편 일정에 따라 전체 운송 기간이 변동될 수 있으며, 요금에는 기사 인건비와 선적료가 포함됩니다.\n\n장기 제주 여행, 이사, 한 달 살기를 계획하는 고객들에게 렌터카보다 자차를 사용하는 합리적 대안으로 인기가 높습니다.',
+      icon: Anchor, 
+      color: 'bg-cyan-50 text-cyan-600',
+      tag: '내륙-해상 원스톱',
+      image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&q=80&w=1000',
+      steps: ['실시간 접수', '항만 차량 선적', '배편 운송', '제주 현지 인도']
+    },
+    { 
+      id: 'inspection',
+      title: '중고차 검수 탁송', 
+      desc: '중고차 구매 시 전문가가 현장에서 차량 상태를 꼼꼼히 검수하고 안전하게 배송해드립니다.', 
+      longDesc: '중고차 검수 탁송은 중고차 구매를 앞둔 고객님을 대신하여 전문가가 현장에 방문, 차량의 외관, 내관, 사고 유무, 소모품 상태 등을 정밀하게 검수하고 그 결과를 리포트로 제공한 뒤 안전하게 탁송까지 완료하는 서비스입니다.\n\n직접 방문하기 어려운 원거리 매물을 구매할 때 유용하며, 전문가의 눈으로 허위 매물이나 숨겨진 결함을 찾아내어 안전한 거래를 돕습니다.\n\n검수 완료 후 고객님의 승인이 떨어지면 즉시 탁송 절차로 전환되어 집 앞까지 안전하게 배송됩니다.',
+      icon: ClipboardCheck, 
+      color: 'bg-emerald-50 text-emerald-600',
+      tag: '구매 대행/검수',
+      image: 'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&q=80&w=1000',
+      steps: ['검수 예약', '전문가 현장 방문', '상태 리포트 전송', '구매 결정 후 탁송']
+    },
+    { 
+      id: 'scrap',
+      title: '폐차/수출 탁송', 
+      desc: '폐차 대행 및 수출항 이동까지, 복잡한 절차를 대행하며 안전하게 차량을 운송합니다.', 
+      longDesc: '폐차/수출 탁송은 노후 차량의 폐차 처리나 해외 수출을 위한 항만 이동을 지원하는 서비스입니다.\n\n폐차장까지의 안전한 이동은 물론, 필요한 서류 절차 안내 및 대행을 통해 고객님의 번거로움을 최소화합니다. 수출 차량의 경우 인천항, 평택항 등 주요 수출항까지 정해진 스케줄에 맞춰 정확하게 입고시킵니다.\n\n주행 불능 차량의 경우 견인차(렉카)를 이용한 운송도 가능하며, 말소 처리 확인까지 꼼꼼하게 챙겨드립니다.',
+      icon: Zap, 
+      color: 'bg-rose-50 text-rose-600',
+      tag: '폐차/수출 대행',
+      image: 'https://images.unsplash.com/photo-1599256621730-535171e28e50?auto=format&fit=crop&q=80&w=1000',
+      steps: ['상담 및 접수', '차량 인수', '폐차장/항만 이동', '말소/입고 확인']
+    }
+  ];
+
+  const handleImageUpload = async (serviceId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // In a real app, you'd upload to Firebase Storage here.
+    // For this environment, we'll use a FileReader to get a base64 string
+    // and store it in Firestore via updateContent.
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      await updateContent(`service_img_${serviceId}`, base64String, 'image');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="min-h-screen bg-white font-sans selection:bg-blue-500 selection:text-white">
+      <Navbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
+      
+      <DalligoMain onSelect={handleSelect} />
+
+      <section id="서비스안내" className="py-24 bg-white overflow-hidden">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-blue-600 font-black tracking-widest uppercase mb-4">Our Services</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 mb-6">
+              <EditableText contentKey="service_title" defaultText="전문적인 탁송 서비스 라인업" />
+            </h3>
+            <p className="text-xl text-slate-500 font-medium">
+              <EditableText contentKey="service_desc" defaultText="차량의 특성과 고객님의 니즈에 맞춘 최적의 솔루션을 제공합니다." />
+            </p>
           </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {services.map((item, idx) => {
+              const displayImage = content[`service_img_${item.id}`] || item.image;
+              const displayTitle = content[`service_title_${item.id}`] || item.title;
+              const displayDesc = content[`service_desc_${item.id}`] || item.desc;
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {content.services.map((service, idx) => (
-              <motion.div 
-                key={service.id}
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all h-full flex flex-col overflow-hidden"
-              >
-                <div className="relative h-48 overflow-hidden">
-                  <img 
-                    src={service.image} 
-                    alt={service.title} 
-                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-4 left-4 w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white border border-white/20">
-                    {renderIcon(service.iconName)}
+              return (
+                <div 
+                  key={idx}
+                  className="rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all duration-500 flex flex-col"
+                  onClick={() => setSelectedService({ ...item, image: displayImage, title: displayTitle, desc: displayDesc })}
+                >
+                  <div className="relative h-56 overflow-hidden">
+                    <img 
+                      src={displayImage} 
+                      alt={displayTitle} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                    {isEditing && isAdmin && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <label className="bg-white text-blue-600 px-4 py-2 rounded-xl font-black text-xs cursor-pointer hover:bg-blue-50 transition-colors">
+                          이미지 변경
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(item.id, e)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </label>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+                    <div className={`absolute top-4 left-4 w-10 h-10 rounded-xl ${item.color} flex items-center justify-center shadow-lg backdrop-blur-md`}>
+                      <item.icon size={20} />
+                    </div>
+                  </div>
+                  
+                  <div className="p-8 pt-2 flex-1 flex flex-col">
+                    <span className="inline-block px-3 py-1 rounded-full bg-slate-50 text-[10px] font-black text-slate-400 mb-4 border border-slate-100 uppercase tracking-wider w-fit">
+                      {item.tag}
+                    </span>
+                    <EditableText 
+                      contentKey={`service_title_${item.id}`} 
+                      defaultText={item.title} 
+                      className="text-2xl font-black text-slate-900 mb-4 drop-shadow-sm block"
+                      as="h4"
+                    />
+                    <EditableText 
+                      contentKey={`service_desc_${item.id}`} 
+                      defaultText={item.desc} 
+                      className="text-slate-500 font-bold leading-relaxed relative z-10 line-clamp-2 text-sm mb-6 block"
+                      as="p"
+                    />
+                    
+                    <div className="mt-auto flex items-center text-blue-600 font-black text-xs gap-1 group-hover:translate-x-1 transition-transform">
+                      상세보기 <X className="rotate-45" size={14} />
+                    </div>
                   </div>
                 </div>
-                <div className="p-8 lg:p-10 flex flex-col flex-grow">
-                  <h3 className="text-xl lg:text-2xl font-bold mb-4" translate="no">{service.title}</h3>
-                  <p className="text-slate-500 text-[15px] leading-relaxed mb-6 flex-grow" translate="no">
-                    {service.description}
-                  </p>
-                  <span className="text-orange-500 font-bold text-sm tracking-tight" translate="no">
-                    {service.tag}
-                  </span>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-blue-600 text-white overflow-hidden relative">
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-md rounded-[3rem] p-10 md:p-16 border border-white/20 shadow-2xl">
+              <div className="flex flex-col md:flex-row items-center gap-10 mb-16">
+                <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center text-blue-600 shrink-0 shadow-xl">
+                  <ShieldCheck size={48} />
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+                <div>
+                  <h3 className="text-3xl md:text-4xl font-black mb-4 tracking-tighter">자동차탁송종합보험 100% 가입</h3>
+                  <p className="text-xl text-blue-100 font-bold">
+                    달리고 탁송은 전 기사님 보험 가입을 원칙으로 하며, <br className="hidden md:block" />
+                    미가입 기사는 배차 시스템에서 원천 차단됩니다.
+                  </p>
+                </div>
+              </div>
 
-      {/* Recruitment Banner */}
-      <section className="bg-[#1A237E] py-16 lg:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="grid grid-cols-6 h-full w-full">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="border-r border-white/20 h-full" />
-            ))}
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-10">
-            <div className="text-center lg:text-left">
-              <h2 className="text-3xl lg:text-4xl font-black text-white mb-4">{content.bannerTitle || "전문 탁송 기사님 상시 모집"}</h2>
-              <p className="text-blue-100 text-lg opacity-80 font-medium">달리고 탁송과 함께 성장할 신뢰할 수 있는 파트너를 기다립니다.</p>
+              <div className="space-y-8">
+                <h4 className="text-2xl font-black text-center mb-10">투명한 사고 보상 프로세스</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { step: '현장 구호', icon: AlertCircle },
+                    { step: '업체 통보', icon: PhoneCall },
+                    { step: '보험사 조사', icon: ClipboardCheck },
+                    { step: '규정 보상', icon: CheckCircle2 }
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex flex-col items-center text-center">
+                      <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 border border-white/30">
+                        <item.icon size={24} />
+                      </div>
+                      <span className="font-black text-sm">{item.step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <button 
-              onClick={() => setCurrentPage('recruitment')}
-              className="bg-[#FF9800] hover:bg-[#F57C00] text-white px-12 py-5 rounded-2xl font-black text-xl transition-all shadow-2xl shadow-black/20 shrink-0"
-            >
-              기사 지원하기
-            </button>
           </div>
         </div>
       </section>
 
-      {/* Process Section */}
-      <section className="py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="이용방법" className="py-24 bg-slate-950 text-white overflow-hidden">
+        <div className="container mx-auto px-6">
           <div className="text-center mb-20">
-            <h2 className="text-3xl lg:text-4xl font-black mb-4">{content.processTitle || "간편한 탁송 프로세스"}</h2>
-            <p className="text-slate-500 font-medium">전화 한 통으로 시작되는 빠르고 완벽한 서비스</p>
+            <h2 className="text-blue-400 font-black tracking-widest uppercase mb-4">Process</h2>
+            <h3 className="text-4xl md:text-5xl font-black mb-6">현실적인 5단계 안심 프로세스</h3>
           </div>
 
           <div className="relative">
-            <div className="hidden lg:block absolute top-12 left-0 w-full h-0.5 bg-slate-100 -z-10" />
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
-              {(content.steps || []).map((step, idx) => (
-                <div key={idx} className="flex flex-col items-center text-center group">
-                  <div className={`w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black mb-8 shadow-2xl transition-all ${idx === 0 ? 'bg-white border-4 border-[#FF9800] text-[#FF9800]' : 'bg-slate-50 text-slate-300 border-4 border-slate-100'}`}>
-                    {step.id}
+            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500/0 via-blue-500/50 to-blue-500/0 -translate-y-1/2" />
+            
+            <div className="grid md:grid-cols-5 gap-8 relative z-10">
+              {[
+                { step: '01', title: '신청 및 견적', desc: '실시간 견적 확인 후 간편하게 접수합니다.', icon: ClipboardList },
+                { step: '02', title: '기사 매칭', desc: '20분 내 최적의 베테랑 기사님을 배정합니다.', icon: UserCheck },
+                { step: '03', title: '차량 인수', desc: '출발지 차량 상태 확인 후 안전하게 인수합니다.', icon: MapPin },
+                { step: '04', title: '안전 이동', desc: '실시간 경로를 준수하며 안전하게 이동합니다.', icon: Truck },
+                { step: '05', title: '인도 완료', desc: '목적지 도착 및 안전하게 키를 인도합니다.', icon: Key }
+              ].map((item, idx) => (
+                <div key={idx} className="text-center group">
+                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/40 relative">
+                    <item.icon size={28} className="text-white" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-white text-blue-600 rounded-full flex items-center justify-center text-xs font-black italic shadow-lg">
+                      {item.step}
+                    </div>
                   </div>
-                  <h4 className="text-xl font-bold mb-4">{step.title}</h4>
-                  <p className="text-slate-500 text-[15px] leading-relaxed whitespace-pre-line font-medium">
-                    {step.desc}
-                  </p>
+                  <h4 className="text-xl font-black mb-4">{item.title}</h4>
+                  <p className="text-slate-400 font-bold text-sm leading-relaxed px-4">{item.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </div>
       </section>
-    </div>
-  )}
 
-      {/* Footer */}
-      {currentPage !== 'admin' && (
-        <footer className="bg-slate-50 border-t border-slate-100 pt-10 md:pt-20 pb-24 md:pb-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-                <div className="col-span-1 lg:col-span-1">
-                  <div className="flex items-center gap-2 text-blue-600 mb-8">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center overflow-hidden border border-slate-200">
-                      <img 
-                        src="https://storage.googleapis.com/static.antigravity.ai/asb/input_file_0.png" 
-                        alt="Dalligo Logo" 
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <span className="text-xl font-black text-blue-900 tracking-tighter" translate="no">{content.footerLogoText || content.logoText || "달리고 탁송"}</span>
-                  </div>
-                  <p className="text-sm text-slate-500 leading-relaxed font-medium mb-4" translate="no">
-                    {content.footerDescription || "달리고 탁송은 대한민국 어디든 부르면 바로 달려가는 신속하고 안전한 차량 탁송 전문 기업입니다. 100% 보험 가입 전문 기사 배차로 고객님의 소중한 자산을 안전하게 운송하겠습니다."}
-                  </p>
-                  <p className="text-sm font-bold text-blue-600" translate="no">{content.footerSubText || "Dalligo Consignment Service"}</p>
+      {activeForm !== 'none' && (
+        <section id="order-section" className="py-24 px-6 bg-slate-50">
+          <div className="container mx-auto max-w-5xl">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tighter">
+                {activeForm === 'consignment' ? '탁송 신청하기' : '대리운전 신청하기'}
+              </h2>
+              <p className="text-xl text-slate-500 font-bold">
+                필수 정보를 입력하시면 신속하게 배차를 도와드립니다.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100">
+              <OrderFormInside type={activeForm as 'consignment' | 'chauffeur'} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section id="요금문의" className="py-24 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-blue-600 font-black tracking-widest uppercase mb-4">Pricing Guide</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tighter">합리적인 이용 요금</h3>
+            <p className="text-xl text-slate-600 font-bold">거리와 차종에 따른 투명한 정찰제를 지향합니다.</p>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            <ConsignmentPriceTable />
+            <ChauffeurPriceTable />
+          </div>
+        </div>
+      </section>
+
+      <section id="driver-application" className="py-24 bg-slate-50">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 p-10 md:p-16">
+            <div className="flex flex-col md:flex-row gap-12 items-center">
+              <div className="flex-1">
+                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-8">
+                  <UserPlus size={32} />
                 </div>
-              
-              <div>
-                <h4 className="font-bold text-slate-900 mb-8">{content.footerServiceTitle || "서비스 안내"}</h4>
-                <ul className="space-y-4 text-sm text-slate-500 font-medium">
-                  {['전국 탁송 요금표', '대리운전 서비스', '기사 지원 안내'].map(item => (
-                    <li key={item}><a href="#" className="hover:text-blue-600 transition-colors">{item}</a></li>
+                <h3 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter">달리고와 함께할<br />기사님을 모집합니다</h3>
+                <p className="text-lg text-slate-500 font-bold mb-8 leading-relaxed">
+                  업계 최고의 대우와 편리한 배차 시스템을 경험해보세요. 24시간 언제든 환영합니다.
+                </p>
+                <ul className="space-y-4">
+                  {['업계 최저 수수료', '실시간 정산 시스템', '24시 사고 대응팀 운영'].map((text, i) => (
+                    <li key={i} className="flex items-center gap-3 font-black text-slate-700">
+                      <Zap size={18} className="text-blue-600" /> {text}
+                    </li>
                   ))}
                 </ul>
               </div>
-
-              <div>
-                <h4 className="font-bold text-slate-900 mb-8">{content.footerCustomerTitle || "고객센터"}</h4>
-                <div className="space-y-4 text-sm text-slate-500 font-medium">
-                  <a href={`tel:${content.contactPhone}`} className="flex items-center gap-3 group">
-                    <PhoneCall className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
-                    <span className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">{content.contactPhone}</span>
-                  </a>
-                  <p className="text-slate-500 font-bold">24시간 연중무휴 상담 가능</p>
-                  <p>상담시간: 00:00 - 24:00</p>
-                  <p>(공휴일 포함 전국 어디서나)</p>
-                  <button 
-                    onClick={() => setIsChatbotOpen(true)}
-                    className="text-blue-600 hover:underline font-bold"
-                  >
-                    실시간 상담 바로가기
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-slate-900 mb-8">{content.footerCompanyTitle || "회사 정보"}</h4>
-                <div className="space-y-2 text-sm text-slate-500 font-medium">
-                  <p className="font-bold text-slate-700">시스템/운영: 모노솔루션 (monosolution)</p>
-                  <p>대표: 김우곤</p>
-                  <p>사업자등록번호: {content.businessNumber}</p>
-                  <p>주소: {content.contactAddress}</p>
-                  <div className="mt-4 pt-4 border-t border-slate-200">
-                    <p className="text-xs text-slate-400">서비스 파트너: {content.servicePartner}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-12 pt-8 border-t border-slate-200">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="space-y-2">
-                  <h5 className="text-[11px] font-black text-slate-700 uppercase tracking-wider">서비스 이용 안내 및 면책 고지</h5>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    달리고 탁송·대리는 국토교통부 정식 허가를 받은 전문 기업과 협력하여 탁송 및 대리운전 중개 및 상담 서비스를 제공합니다. 실제 운송 업무는 해당 협력 업체의 책임 하에 진행되며, 당사는 중개자로서 협력사의 과실로 인한 분쟁에 대해서는 법적 책임이 없음을 알려드립니다.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h5 className="text-[11px] font-black text-slate-700 uppercase tracking-wider">안전 거래 가이드</h5>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    당사는 안전한 거래를 위해 협력 업체의 자격을 상시 확인하고 있습니다. 고객님의 안전을 위해 차량 인도 전 반드시 보험 가입 여부를 확인하시길 강력히 권장하며, 예약 시 정확한 위치 정보를 제공해 주시면 더욱 신속한 처리가 가능합니다.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-xs text-slate-400 font-medium">{content.footerText}</p>
-              <div className="flex gap-8">
-                <a href="#" className="text-xs text-slate-400 hover:text-slate-600 font-medium">이용약관</a>
-                <a href="#" className="text-xs text-slate-600 hover:text-slate-900 font-bold">개인정보처리방침</a>
+              <div className="flex-1 w-full">
+                <DriverApplicationForm />
               </div>
             </div>
           </div>
-        </footer>
-      )}
+        </div>
+      </section>
 
-      {/* Mobile Sticky Call Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[55] bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 flex gap-3 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
-        <a 
-          href={`tel:${content.contactPhone.replace(/-/g, '')}`}
-          className="flex-1 bg-blue-600 text-white py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-lg shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
-        >
-          <PhoneCall className="w-6 h-6" /> 전화 상담
-        </a>
-        <button 
-          onClick={() => setIsChatbotOpen(true)}
-          className="w-16 h-16 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all"
-        >
-          <MessageCircle className="w-8 h-8" />
-        </button>
-      </div>
+      <ReviewSection />
 
-      {/* Floating Chat Button (Desktop Only) */}
-      {!Capacitor.isNativePlatform() && (
-        <button 
-          onClick={() => setIsChatbotOpen(true)}
-          className="hidden lg:flex fixed bottom-8 right-8 z-[60] w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl items-center justify-center hover:bg-blue-700 hover:scale-110 transition-all group"
-          aria-label="실시간 상담"
-        >
-          <MessageCircle className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce">
-            LIVE
-          </span>
-        </button>
-      )}
+      <section className="py-24 bg-slate-50">
+        <div className="container mx-auto px-6 max-w-5xl">
+          <div className="text-center mb-16">
+            <h2 className="text-blue-600 font-black tracking-widest uppercase mb-4">FAQ & Guide</h2>
+            <h3 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter">이용 전 꼭 확인해주세요</h3>
+          </div>
 
-      {/* Chatbot */}
-      <Chatbot 
-        isOpen={isChatbotOpen} 
-        onClose={() => setIsChatbotOpen(false)} 
-        content={content}
-      />
+          <div className="grid md:grid-cols-2 gap-8">
+            {[
+              { 
+                q: '과태료 처리는 어떻게 되나요?', 
+                a: '기사 과실로 인한 과태료 발생 시 당일 즉시 처리 원칙을 준수합니다. 위반 사실 확인 후 즉시 보상해드립니다.',
+                icon: AlertCircle
+              },
+              { 
+                q: '정산 기준이 궁금합니다.', 
+                a: '톨게이트 비용 및 주유비는 실비 정산을 원칙으로 합니다. 영수증 증빙을 통해 투명하게 정산됩니다.',
+                icon: CreditCard
+              },
+              { 
+                q: '기상 악화 시에는 어떻게 하나요?', 
+                a: '폭설, 폭우 등 천재지변 시 안전을 위해 일정이 조정될 수 있습니다. 고객님과 협의 후 최적의 시간을 재배정합니다.',
+                icon: Zap
+              },
+              { 
+                q: '보험 처리는 확실한가요?', 
+                a: '전 기사님 자동차탁송종합보험 가입 완료 상태입니다. 사고 발생 시 보험사 조사를 통해 규정에 따른 완벽한 보상을 약속합니다.',
+                icon: Shield
+              }
+            ].map((item, idx) => (
+              <div key={idx} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-lg shadow-slate-200/50">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                    <item.icon size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 mb-3">{item.q}</h4>
+                    <p className="text-slate-500 font-bold text-sm leading-relaxed">{item.a}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24 bg-white border-t border-slate-100">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-3xl mx-auto">
+            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white mx-auto mb-10 shadow-2xl shadow-blue-600/20">
+              <Truck size={40} />
+            </div>
+            <h3 className="text-3xl md:text-4xl font-black text-slate-900 mb-8 tracking-tighter">
+              전국 통합 배차 시스템 운영
+            </h3>
+            <p className="text-xl text-slate-500 font-bold leading-relaxed mb-10">
+              달리고 탁송은 단순한 운송을 넘어, <br />
+              <span className="text-blue-600">고객의 소중한 자산을 안전하게 연결하는 물류 전문가</span>입니다. <br />
+              전국 어디서나 표준화된 고품격 서비스를 경험해보세요.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <section id="취소규정" className="py-24 bg-white border-t border-slate-100">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <div className="flex items-center gap-3 mb-10">
+            <Info className="text-red-500 w-8 h-8" />
+            <h3 className="text-3xl font-black text-slate-900">취소 및 위약금 규정</h3>
+          </div>
+          <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-100 text-slate-600 font-bold">
+            <p className="mb-4">• 배차 후 5분 경과 시 위약금이 발생할 수 있습니다.</p>
+            <p>• 자세한 내용은 고객센터(1844-1585)로 문의 바랍니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+      <ServiceModal service={selectedService} onClose={() => setSelectedService(null)} />
     </div>
   );
 }

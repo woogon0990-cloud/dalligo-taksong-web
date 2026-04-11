@@ -1,95 +1,56 @@
 import React from 'react';
-import { motion } from 'motion/react';
-import { Navigation, ShieldCheck, X } from 'lucide-react';
-import { useContent } from '../AuthContext';
+import { MapPin, UserCheck } from 'lucide-react';
 
-const ChauffeurPriceTable: React.FC = () => {
-  const { content } = useContent();
+const prices = [
+  { region: "시내 기본 (5km 이내)", price: "15,000원~", note: "기본 요금" },
+  { region: "시내 중거리 (10km)", price: "20,000원~", note: "시내권 이동" },
+  { region: "인접 도시 이동", price: "30,000원~", note: "천안 ↔ 아산 등" },
+  { region: "수도권 광역 이동", price: "50,000원~", note: "천안 ↔ 서울/경기" },
+  { region: "심야 할증 (00시~04시)", price: "+5,000원", note: "시간대별 차등" },
+  { region: "경유지 추가", price: "+5,000원~", note: "1곳당 추가" },
+];
 
+export default function ChauffeurPriceTable() {
   return (
-    <section className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl lg:text-4xl font-black text-slate-900 mb-4 flex items-center justify-center gap-3">
-              <Navigation className="w-10 h-10 text-blue-600" /> {content.chauffeurPricingTitle || "대리운전 요금 안내"}
-            </h2>
-            <p className="text-slate-500 font-medium text-lg">안전하고 편안한 귀가를 위한 합리적인 요금을 약속드립니다.</p>
-          </motion.div>
+    <div className="flex-1">
+      <div className="bg-slate-50 rounded-[3rem] p-8 md:p-12 border border-slate-100 shadow-2xl shadow-slate-200/50">
+        <div className="flex items-center gap-4 mb-10">
+          <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
+            <UserCheck size={24} />
+          </div>
+          <div>
+            <h4 className="text-2xl font-black text-slate-900 tracking-tighter">대리 요금 가이드</h4>
+            <p className="text-sm text-slate-500 font-bold italic">Chauffeur Rate Guide</p>
+          </div>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="bg-white rounded-[2rem] lg:rounded-[3rem] shadow-2xl border border-slate-100 overflow-hidden"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-900 text-white">
-                  <th className="px-8 py-6 font-bold text-lg">운행 구간/거리</th>
-                  <th className="px-8 py-6 font-bold text-lg">예상 요금</th>
-                  <th className="px-8 py-6 font-bold text-lg">구분</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {(content.chauffeurPricingTable || []).map((row, i) => (
-                  <tr key={i} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-8 py-6 font-bold text-slate-700">{row.dist}</td>
-                    <td className="px-8 py-6 font-black text-blue-600">{row.price}</td>
-                    <td className="px-8 py-6">
-                      <span className="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-full text-sm font-bold">
-                        {row.type}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="p-8 lg:p-12 bg-slate-50 border-t border-slate-100">
-            <h4 className="font-black text-slate-900 mb-6 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" /> 요금 산정 시 참고 및 할증 조건
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {(content.chauffeurPricingConditions || []).map((condition, i) => (
-                <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                  <p className="text-sm font-bold text-blue-600 mb-2">{condition.title}</p>
-                  <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                    {condition.description}
-                  </p>
+        <div className="space-y-4">
+          {prices.map((item, i) => (
+            <div 
+              key={i}
+              className="flex items-center justify-between p-5 rounded-2xl bg-white border border-slate-100 hover:border-orange-200 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                  <MapPin size={18} />
                 </div>
-              ))}
-            </div>
-
-            {/* Cancellation Policy */}
-            <div className="mt-12 pt-12 border-t border-slate-200">
-              <h4 className="font-black text-slate-900 mb-6 flex items-center gap-2">
-                <X className="w-5 h-5 text-red-500" /> 취소 및 환불 규정
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {(content.chauffeurCancellationPolicy || []).map((item, i) => (
-                  <div key={i} className={`${item.bg} p-4 rounded-xl border border-slate-100 text-center`}>
-                    <p className="text-xs font-bold text-slate-400 mb-1">{item.time}</p>
-                    <p className={`text-sm font-black ${item.color}`}>{item.policy}</p>
-                  </div>
-                ))}
+                <div>
+                  <div className="font-black text-slate-900">{item.region}</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{item.note}</div>
+                </div>
               </div>
-              <p className="mt-4 text-xs text-slate-400 text-center font-medium">
-                ※ 취소 수수료는 기사 배차 및 이동 거리에 따라 발생할 수 있습니다.
-              </p>
+              <div className="text-xl font-black text-orange-600">{item.price}</div>
             </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-};
+          ))}
+        </div>
 
-export default ChauffeurPriceTable;
+        <div className="mt-10 p-6 rounded-3xl bg-orange-50 border border-orange-100 flex items-start gap-4">
+          <UserCheck size={20} className="text-orange-600 shrink-0 mt-1" />
+          <p className="text-xs text-orange-700 font-bold leading-relaxed">
+            전 직원 100% 대리운전 보험 가입 완료. 안심하고 맡기세요. 사고 시 완벽한 보상을 약속드립니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
