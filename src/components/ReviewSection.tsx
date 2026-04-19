@@ -1,13 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, UserCircle2 } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 
-const reviews = [
-  { id: "r1", name: "고객님 A", service: "전국 탁송", content: "갑작스럽게 제주도 탁송이 필요했는데, 상담부터 도착까지 너무 친절하고 빠르게 진행해주셔서 감동받았습니다. 다음에도 꼭 이용할게요!", date: "2026.04.08" },
-  { id: "r2", name: "고객님 B", service: "수입차 탁송", content: "고가의 수입차라 걱정이 많았는데, 베테랑 기사님이 오셔서 꼼꼼하게 체크해주시고 안전하게 운송해주셨습니다. 역시 전문가는 다르네요.", date: "2026.04.07" },
-  { id: "r3", name: "고객님 C", service: "당일 급행", content: "급하게 차량을 보내야 했는데 접수하자마자 바로 매칭되어서 놀랐습니다. 가격도 합리적이고 서비스 품질이 정말 높습니다.", date: "2026.04.06" }
-];
+interface Review {
+  id: string;
+  name: string;
+  service: string;
+  content: string;
+  date: string;
+}
 
 export default function ReviewSection() {
+  const [reviews, setReviews] = useState<Review[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: Review[] = [];
+      snapshot.forEach((doc) => {
+        data.push({ id: doc.id, ...doc.data() } as Review);
+      });
+      setReviews(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const defaultReviews = [
+    { id: "r1", name: "고객님 A", service: "전국 탁송", content: "갑작스럽게 제주도 탁송이 필요했는데, 상담부터 도착까지 너무 친절하고 빠르게 진행해주셔서 감동받았습니다. 다음에도 꼭 이용할게요!", date: "2026.04.08" },
+    { id: "r2", name: "고객님 B", service: "수입차 탁송", content: "고가의 수입차라 걱정이 많았는데, 베테랑 기사님이 오셔서 꼼꼼하게 체크해주시고 안전하게 운송해주셨습니다. 역시 전문가는 다르네요.", date: "2026.04.07" },
+    { id: "r3", name: "고객님 C", service: "당일 급행", content: "급하게 차량을 보내야 했는데 접수하자마자 바로 매칭되어서 놀랐습니다. 가격도 합리적이고 서비스 품질이 정말 높습니다.", date: "2026.04.06" }
+  ];
+
+  const displayReviews = reviews.length > 0 ? reviews : defaultReviews;
+
   return (
     <section className="py-32 bg-[#F8FAFC]">
       <div className="container mx-auto px-6">
@@ -20,7 +46,7 @@ export default function ReviewSection() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {reviews.map((review) => (
+          {displayReviews.map((review) => (
             <div
               key={review.id}
               className="bg-white p-10 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100"

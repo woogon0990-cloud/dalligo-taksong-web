@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "cosmic-flux-479001-c0"
+  },
+  "targets": {
+    "cosmic-flux-479001-c0": {
+      "hosting": {
+        "daligo": [
+          "daligo-taksong"
+        ],
+        "ilryu": [
+          "ilryu-taksong"
+        ]
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, runTransaction, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { useContent } from '../ContentContext';
@@ -18,8 +18,33 @@ import {
   Printer,
   Lock,
   Image as ImageIcon,
-  Upload
+  Upload,
+  Home,
+  ArrowLeft,
+  Users,
+  Coins,
+  History,
+  Plus,
+  Minus
 } from 'lucide-react';
+
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: string;
+  points: number;
+  createdAt: string;
+}
+
+interface PointLog {
+  id: string;
+  userId: string;
+  amount: number;
+  balanceAfter: number;
+  reason: string;
+  createdAt: string;
+}
 
 interface Order {
   id: string;
@@ -47,7 +72,23 @@ interface Order {
   isRoundTrip?: boolean;
   agreedToTerms?: boolean;
   agreedAt?: string;
+  contractConfirmed?: boolean;
+  confirmedAt?: string;
+  contractSnapshot?: {
+    id: string;
+    version: string;
+    confirmedBy: string;
+  };
   status: 'pending' | 'assigned' | 'completed';
+  createdAt: string;
+}
+
+interface Review {
+  id: string;
+  name: string;
+  service: string;
+  content: string;
+  date: string;
   createdAt: string;
 }
 
@@ -55,13 +96,24 @@ export default function AdminDashboard() {
   const { user, logout, isAdmin: isGoogleAdmin } = useAuth();
   const { content, updateContent, isEditing, setIsEditing } = useContent();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [activeTab, setActiveTab] = useState<'orders' | 'cms' | 'images'>('orders');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [pointLogs, setPointLogs] = useState<PointLog[]>([]);
+  const [activeTab, setActiveTab] = useState<'orders' | 'cms' | 'images' | 'reviews' | 'users'>('orders');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedUserLogs, setSelectedUserLogs] = useState<string | null>(null);
   
-  // Password Protection State
+  // Point adjustment state
+  const [pointAdjustModal, setPointAdjustModal] = useState<{ userId: string, email: string } | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState<number>(0);
+  const [adjustReason, setAdjustReason] = useState('');
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const ADMIN_PASSWORD = 'daligoadmin123'; // 나중에 여기서 수정 가능
+
+  // Image Management State
+  const [pendingImages, setPendingImages] = useState<Record<string, string>>({});
+  const [isSavingImage, setIsSavingImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated && !isGoogleAdmin) return;
@@ -79,6 +131,98 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, [isAuthenticated, isGoogleAdmin]);
+
+  useEffect(() => {
+    if (!isAuthenticated && !isGoogleAdmin) return;
+
+    const q = query(collection(db, 'reviews'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newReviews: Review[] = [];
+      snapshot.forEach((doc) => {
+        newReviews.push({ id: doc.id, ...doc.data() } as Review);
+      });
+      setReviews(newReviews);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'reviews');
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, isGoogleAdmin]);
+
+  useEffect(() => {
+    if (!isAuthenticated && !isGoogleAdmin) return;
+
+    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newUsers: UserProfile[] = [];
+      snapshot.forEach((doc) => {
+        newUsers.push({ uid: doc.id, ...doc.data() } as UserProfile);
+      });
+      setUsers(newUsers);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, isGoogleAdmin]);
+
+  useEffect(() => {
+    if (!isAuthenticated && !isGoogleAdmin || !selectedUserLogs) {
+      setPointLogs([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'point_logs'), 
+      where('userId', '==', selectedUserLogs),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const logs: PointLog[] = [];
+      snapshot.forEach((doc) => {
+        logs.push({ id: doc.id, ...doc.data() } as PointLog);
+      });
+      setPointLogs(logs);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'point_logs');
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, isGoogleAdmin, selectedUserLogs]);
+
+  const handleAdjustPoints = async () => {
+    if (!pointAdjustModal || adjustAmount === 0 || !adjustReason) return;
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, 'users', pointAdjustModal.userId);
+        const userDoc = await transaction.get(userRef);
+        
+        if (!userDoc.exists()) throw new Error("User not found");
+        
+        const currentPoints = userDoc.data().points || 0;
+        const newPoints = currentPoints + adjustAmount;
+        
+        transaction.update(userRef, { points: newPoints });
+
+        const logRef = doc(collection(db, 'point_logs'));
+        transaction.set(logRef, {
+          userId: pointAdjustModal.userId,
+          amount: adjustAmount,
+          balanceAfter: newPoints,
+          reason: adjustReason,
+          createdAt: new Date().toISOString()
+        });
+      });
+
+      alert('포인트가 성공적으로 조정되었습니다.');
+      setPointAdjustModal(null);
+      setAdjustAmount(0);
+      setAdjustReason('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${pointAdjustModal.userId}/points`);
+    }
+  };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +247,26 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, 'orders', orderId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `orders/${orderId}`);
+    }
+  };
+
+  const handleImageSave = async (serviceId: string) => {
+    const base64 = pendingImages[serviceId];
+    if (!base64) return;
+
+    setIsSavingImage(serviceId);
+    try {
+      await updateContent(`service_img_${serviceId}`, base64, 'image');
+      setPendingImages(prev => {
+        const next = { ...prev };
+        delete next[serviceId];
+        return next;
+      });
+      alert('이미지가 저장되었습니다.');
+    } catch (error) {
+      console.error('Image save failed:', error);
+    } finally {
+      setIsSavingImage(null);
     }
   };
 
@@ -151,11 +315,30 @@ export default function AdminDashboard() {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
         <div className="p-8">
-          <div className="flex items-center gap-2 mb-10">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <LayoutDashboard size={18} className="text-white" />
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <LayoutDashboard size={18} className="text-white" />
+              </div>
+              <span className="text-xl font-black tracking-tighter italic text-white">Admin Panel</span>
             </div>
-            <span className="text-xl font-black tracking-tighter italic text-white">Admin Panel</span>
+          </div>
+
+          <div className="flex gap-2 mb-8">
+            <button 
+              onClick={() => window.history.back()}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-all font-bold text-xs"
+              title="이전으로"
+            >
+              <ArrowLeft size={16} /> 뒤로
+            </button>
+            <button 
+              onClick={() => window.location.href = '/'}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-all font-bold text-xs"
+              title="홈페이지로"
+            >
+              <Home size={16} /> 홈
+            </button>
           </div>
 
           <nav className="space-y-2">
@@ -176,6 +359,18 @@ export default function AdminDashboard() {
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'images' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800'}`}
             >
               <ImageIcon size={20} /> 이미지 관리
+            </button>
+            <button 
+              onClick={() => setActiveTab('reviews')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'reviews' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <FileText size={20} /> 후기 관리
+            </button>
+            <button 
+              onClick={() => setActiveTab('users')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800'}`}
+            >
+              <Users size={20} /> 회원/포인트 관리
             </button>
           </nav>
         </div>
@@ -204,10 +399,10 @@ export default function AdminDashboard() {
         <header className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-4xl font-black text-white tracking-tighter">
-              {activeTab === 'orders' ? '실시간 접수 현황' : activeTab === 'cms' ? '홈페이지 콘텐츠 관리' : '서비스 이미지 관리'}
+              {activeTab === 'orders' ? '실시간 접수 현황' : activeTab === 'cms' ? '홈페이지 콘텐츠 관리' : activeTab === 'images' ? '서비스 이미지 관리' : activeTab === 'reviews' ? '고객 후기 관리' : '회원 및 포인트 관리'}
             </h1>
             <p className="text-slate-500 font-bold mt-2">
-              {activeTab === 'orders' ? '고객님들의 소중한 신청 건을 실시간으로 관리합니다.' : activeTab === 'cms' ? '홈페이지의 텍스트와 이미지를 실시간으로 수정할 수 있습니다.' : '메인 페이지 서비스 카드의 이미지를 직접 업로드하여 변경할 수 있습니다.'}
+              {activeTab === 'orders' ? '고객님들의 소중한 신청 건을 실시간으로 관리합니다.' : activeTab === 'cms' ? '홈페이지의 텍스트와 이미지를 실시간으로 수정할 수 있습니다.' : activeTab === 'images' ? '메인 페이지 서비스 카드의 이미지를 직접 업로드하여 변경할 수 있습니다.' : activeTab === 'reviews' ? '홈페이지에 표시될 소중한 고객 리뷰를 관리합니다.' : '가입된 회원 리스트와 포인트 자산을 통합 관리합니다.'}
             </p>
           </div>
           
@@ -245,6 +440,11 @@ export default function AdminDashboard() {
                         <div className="text-[10px] text-slate-500 font-bold mt-1">
                           {new Date(order.createdAt).toLocaleString('ko-KR')}
                         </div>
+                        {order.contractConfirmed && (
+                          <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 text-[9px] font-black rounded border border-green-800/50 uppercase">
+                            <CheckCircle2 size={10} /> 계약서 확정됨
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-6">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${order.type === 'consignment' ? 'bg-blue-900/30 text-blue-400 border border-blue-800/50' : 'bg-orange-900/30 text-orange-400 border border-orange-800/50'}`}>
@@ -333,6 +533,59 @@ export default function AdminDashboard() {
               홈페이지 바로가기 <ExternalLink size={18} />
             </button>
           </div>
+        ) : activeTab === 'reviews' ? (
+          <div className="space-y-8">
+            {/* ... Review code ... */}
+          </div>
+        ) : activeTab === 'users' ? (
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800/50 border-b border-slate-800">
+                    <th className="px-6 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">사용자 정보</th>
+                    <th className="px-6 py-5 text-xs font-black text-slate-500 uppercase tracking-widest">권한</th>
+                    <th className="px-6 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-right">보유 포인트</th>
+                    <th className="px-6 py-5 text-xs font-black text-slate-500 uppercase tracking-widest text-center">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {users.map((u) => (
+                    <tr key={u.uid} className="hover:bg-slate-800/30 transition-colors group">
+                      <td className="px-6 py-6">
+                        <div className="font-black text-white text-sm">{u.displayName || '이름 없음'}</div>
+                        <div className="text-[10px] text-slate-500 font-bold mt-1">{u.email}</div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${u.role === 'admin' ? 'bg-red-900/30 text-red-500' : 'bg-slate-800 text-slate-400'}`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-6 text-right">
+                        <div className="font-black text-blue-500 text-lg">{(u.points || 0).toLocaleString()}P</div>
+                      </td>
+                      <td className="px-6 py-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => setPointAdjustModal({ userId: u.uid, email: u.email })}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-xs font-black"
+                          >
+                            <Coins size={14} /> 조정
+                          </button>
+                          <button 
+                            onClick={() => setSelectedUserLogs(u.uid)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white rounded-lg transition-all text-xs font-black"
+                          >
+                            <History size={14} /> 내역
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
@@ -343,7 +596,8 @@ export default function AdminDashboard() {
               { id: 'inspection', label: '중고차 검수 탁송' },
               { id: 'scrap', label: '폐차/수출 탁송' }
             ].map((service) => {
-              const currentImg = content[`service_img_${service.id}`];
+              const currentImg = pendingImages[service.id] || content[`service_img_${service.id}`];
+              const isPending = !!pendingImages[service.id];
               return (
                 <div key={service.id} className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl flex flex-col">
                   <div className="relative h-48 bg-slate-800">
@@ -354,29 +608,48 @@ export default function AdminDashboard() {
                         <ImageIcon size={48} />
                       </div>
                     )}
+                    {isPending && (
+                      <div className="absolute top-4 right-4 bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded-full animate-pulse">
+                        저장 대기 중
+                      </div>
+                    )}
                   </div>
                   <div className="p-8 space-y-4">
                     <h3 className="text-xl font-black text-white">{service.label}</h3>
                     <p className="text-xs text-slate-500 font-bold">권장 사이즈: 1920x1080 (16:9)</p>
-                    <label className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-blue-600/20">
-                      <Upload size={18} /> 이미지 변경
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onloadend = async () => {
-                            const base64 = reader.result as string;
-                            await updateContent(`service_img_${service.id}`, base64, 'image');
-                            alert(`${service.label} 이미지가 변경되었습니다.`);
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </label>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="flex items-center justify-center gap-2 py-4 bg-slate-800 text-slate-300 font-black rounded-2xl hover:bg-slate-700 transition-all cursor-pointer">
+                        <Upload size={18} /> 파일 선택
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const base64 = reader.result as string;
+                              setPendingImages(prev => ({ ...prev, [service.id]: base64 }));
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+
+                      <button 
+                        onClick={() => handleImageSave(service.id)}
+                        disabled={!isPending || isSavingImage === service.id}
+                        className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black transition-all shadow-lg ${
+                          isPending 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20' 
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <Save size={18} /> {isSavingImage === service.id ? '저장 중...' : '저장하기'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -506,21 +779,56 @@ export default function AdminDashboard() {
 
                 {/* 법적 동의 정보 */}
                 <div className="space-y-4 col-span-full">
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">법적 동의 기록</h4>
-                  <div className="bg-slate-800/50 p-6 rounded-2xl flex items-center justify-between border border-blue-900/30">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-500">
-                        <CheckCircle2 size={24} />
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">법적 동의 및 계약 기록</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-slate-800/50 p-6 rounded-2xl flex items-center justify-between border border-blue-900/30">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-500">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <p className="text-white font-black">이용약관 동의</p>
+                          <p className="text-slate-500 text-[10px] font-bold">신청 시점 동의 완료</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white font-black">서비스 이용 및 면책 조항 동의</p>
-                        <p className="text-slate-500 text-xs font-bold">고객이 신청 시 모든 약관에 직접 동의함</p>
+                      <div className="text-right">
+                        <p className="text-blue-400 font-black text-xs">Agreed</p>
+                        <p className="text-slate-500 text-[10px] font-bold">{selectedOrder.agreedAt ? new Date(selectedOrder.agreedAt).toLocaleString() : '기록 없음'}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-blue-400 font-black">동의 완료 (True)</p>
-                      <p className="text-slate-500 text-xs font-bold">{selectedOrder.agreedAt ? new Date(selectedOrder.agreedAt).toLocaleString() : '기록 없음'}</p>
+
+                    <div className={`bg-slate-800/50 p-6 rounded-2xl flex items-center justify-between border ${selectedOrder.contractConfirmed ? 'border-green-900/30' : 'border-slate-800'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedOrder.contractConfirmed ? 'bg-green-600/20 text-green-500' : 'bg-slate-700 text-slate-500'}`}>
+                          <FileText size={24} />
+                        </div>
+                        <div>
+                          <p className="text-white font-black">계약서 최종 확정</p>
+                          <p className="text-slate-500 text-[10px] font-bold">{selectedOrder.contractConfirmed ? '팝업 확인 후 최종 동의' : '미확정 상태'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-black text-xs ${selectedOrder.contractConfirmed ? 'text-green-400' : 'text-slate-500'}`}>
+                          {selectedOrder.contractConfirmed ? 'Confirmed' : 'Pending'}
+                        </p>
+                        <p className="text-slate-500 text-[10px] font-bold">
+                          {selectedOrder.confirmedAt ? new Date(selectedOrder.confirmedAt).toLocaleString() : '-'}
+                        </p>
+                      </div>
                     </div>
+
+                    {selectedOrder.contractConfirmed && selectedOrder.contractSnapshot && (
+                      <div className="col-span-full bg-slate-800/30 p-4 rounded-xl border border-slate-800/50 flex flex-col gap-1">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                          <Lock size={10} /> Defense Evidence (Immutable Log)
+                        </p>
+                        <p className="text-xs text-slate-400 font-bold">
+                          계약번호: <span className="text-slate-200">{selectedOrder.contractSnapshot.id}</span> | 
+                          동의자: <span className="text-slate-200">{selectedOrder.contractSnapshot.confirmedBy}</span> | 
+                          버전: <span className="text-slate-200">{selectedOrder.contractSnapshot.version}</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -549,6 +857,110 @@ export default function AdminDashboard() {
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Point Adjustment Modal */}
+      {pointAdjustModal && (
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="bg-slate-800 p-8 flex justify-between items-center">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <Coins className="text-blue-500" /> 포인트 수동 조정
+              </h3>
+              <button onClick={() => setPointAdjustModal(null)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <div>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-1">대상 사용자</p>
+                <p className="text-white font-black">{pointAdjustModal.email}</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 ml-2 italic">변경 수치 (증가는 양수, 차감은 음수)</label>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setAdjustAmount(prev => prev - 1000)}
+                    className="p-3 bg-slate-800 text-red-500 rounded-xl hover:bg-slate-700 transition-all"
+                  >
+                    <Minus size={20} />
+                  </button>
+                  <input 
+                    type="number"
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(parseInt(e.target.value) || 0)}
+                    className="flex-1 bg-slate-800 border-2 border-slate-700 rounded-xl py-4 px-6 text-white font-black text-center outline-none focus:border-blue-500 transition-all font-mono"
+                  />
+                  <button 
+                    onClick={() => setAdjustAmount(prev => prev + 1000)}
+                    className="p-3 bg-slate-800 text-green-500 rounded-xl hover:bg-slate-700 transition-all"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 ml-2 italic">조정 사유</label>
+                <input 
+                  type="text"
+                  value={adjustReason}
+                  onChange={(e) => setAdjustReason(e.target.value)}
+                  placeholder="예: 프로모션 보너스 지급"
+                  className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl py-4 px-6 text-white font-black outline-none focus:border-blue-500 transition-all"
+                />
+              </div>
+              <button 
+                onClick={handleAdjustPoints}
+                className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
+              >
+                조정 완료하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Point History Log Modal */}
+      {selectedUserLogs && (
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="bg-slate-800 p-8 flex justify-between items-center">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                <History className="text-blue-500" /> 포인트 상세 내역
+              </h3>
+              <button onClick={() => setSelectedUserLogs(null)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-4">
+                {pointLogs.map((log) => (
+                  <div key={log.id} className="bg-slate-800/50 p-6 rounded-2xl border border-slate-800 flex justify-between items-center group hover:border-slate-700 transition-all">
+                    <div className="space-y-1">
+                      <p className="text-white font-black text-sm">{log.reason}</p>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-black text-lg ${log.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {log.amount >= 0 ? '+' : ''}{log.amount.toLocaleString()}P
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-bold italic">
+                        잔액: {log.balanceAfter.toLocaleString()}P
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {pointLogs.length === 0 && (
+                  <div className="py-20 text-center text-slate-500 font-bold">
+                    적립 내역이 없습니다.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

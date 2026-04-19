@@ -1,5 +1,8 @@
 {
   "name": "달리고 탁송",
   "description": "전국탁송 및 제주도탁송, 장거리탁송 전문. 베테랑 탁송기사 상시 대기! 천안 대리운전과 전국 화물 배차까지 신속하게 연결해 드립니다.",
-  "requestFramePermissions": ["geolocation"]
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
 }

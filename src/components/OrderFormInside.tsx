@@ -4,19 +4,21 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Phone, Send, ClipboardList, Info, MapPin, User, X, Copy, Check, Anchor, Truck, Car, Settings, FileText, ChevronRight, ClipboardCheck, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Phone, Send, ClipboardList, Info, MapPin, User, X, Copy, Check, Anchor, Truck, Car, Settings, FileText, ChevronRight, ClipboardCheck, Trash2, Calendar, Clock, Zap } from 'lucide-react';
 import { calculateFare, FareOptions } from '../lib/fareUtils';
 import axios from 'axios';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+import { useAuth } from '../AuthContext';
 
 type ServiceType = 'road' | 'carrier' | 'selfloader' | 'jeju' | 'inspection' | 'scrap';
 
 export default function OrderFormInside({ type }: { type: 'consignment' | 'chauffeur' }) {
-  const [distance, setDistance] = useState<number>(0);
+  const { user } = useAuth();
   const [hasStopover, setHasStopover] = useState(false);
   const [isUpward, setIsUpward] = useState(false);
-  const [estimatedFare, setEstimatedFare] = useState(20000);
+  const [estimatedFare, setEstimatedFare] = useState(25000);
   const [paymentMethod, setPaymentMethod] = useState<'prepaid' | 'postpaid'>('prepaid');
   const [showBankPopup, setShowBankPopup] = useState(false);
   const [showContractPopup, setShowContractPopup] = useState(false);
@@ -24,6 +26,9 @@ export default function OrderFormInside({ type }: { type: 'consignment' | 'chauf
   const [isCopied, setIsCopied] = useState(false);
   const [serviceType, setServiceType] = useState<ServiceType>('road');
   const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [isReservation, setIsReservation] = useState(false);
+  const [isTimeSaved, setIsTimeSaved] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   
   // Agreement States
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
@@ -40,8 +45,7 @@ export default function OrderFormInside({ type }: { type: 'consignment' | 'chauf
     departureContact: '',
     arrivalAddr: '',
     arrivalContact: '',
-    stopoverAddr: '',
-    stopoverContact: '',
+    stopovers: [] as { address: string; contact: string; detail?: string }[],
     memo: '',
     pickupTime: '',
     pickupAmPm: '오전' as '오전' | '오후'
@@ -60,23 +64,45 @@ export default function OrderFormInside({ type }: { type: 'consignment' | 'chauf
   } | null>(null);
 
   const serviceTypes: { id: ServiceType; label: string; icon: React.ElementType }[] = [
-    { id: 'road', label: '일반', icon: Truck },
-    { id: 'carrier', label: '캐리어', icon: Car },
-    { id: 'selfloader', label: '셀프로더', icon: Settings },
-    { id: 'jeju', label: '제주도', icon: Anchor },
-    { id: 'inspection', label: '중고차 검수', icon: ClipboardCheck },
-    { id: 'scrap', label: '폐차/수출', icon: Trash2 },
+    { id: 'road', label: '일반 탁송', icon: Truck },
+    { id: 'carrier', label: '캐리어 탁송', icon: Car },
+    { id: 'selfloader', label: '셀프로더 탁송', icon: Settings },
+    { id: 'jeju', label: '제주도 탁송', icon: Anchor },
+    { id: 'inspection', label: '중고차 검수 탁송', icon: ClipboardCheck },
+    { id: 'scrap', label: '폐차/수출 탁송', icon: Trash2 },
   ];
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setFormData(prev => ({
+              ...prev,
+              customerPhone: userData.phone || prev.customerPhone,
+              carNumber: userData.carNumber || prev.carNumber
+            }));
+          }
+        } catch (err) {
+          console.error("Error pre-filling user data:", err);
+        }
+      }
+    };
+    fetchUserData();
+  }, [user]);
+
+  useEffect(() => {
+    // Distance estimation logic removed as per request
     const options: FareOptions = {
       hasStopover,
       isUpward,
-      dist1: hasStopover ? Math.floor(distance * 0.6) : 0,
-      dist2: hasStopover ? Math.ceil(distance * 0.4) : 0,
+      dist1: 0,
+      dist2: 0,
     };
-    setEstimatedFare(calculateFare(distance, options));
-  }, [distance, hasStopover, isUpward]);
+    setEstimatedFare(calculateFare(0, options));
+  }, [hasStopover, isUpward]);
 
   const formatPhone = (value: string) => {
     const numbers = value.replace(/[^\d]/g, '');
@@ -107,20 +133,22 @@ export default function OrderFormInside({ type }: { type: 'consignment' | 'chauf
     setIsSubmitting(true);
     const serviceLabel = serviceTypes.find(s => s.id === serviceType)?.label || '일반';
     const carInfo = `${formData.carName || formData.carModel || '정보 없음'} ${formData.carNumber ? `(${formData.carNumber})` : ''} (${formData.transmission}${type === 'consignment' ? `, ${formData.operationStatus}` : ''})`;
-    const pickupTimeFull = `${formData.pickupTime} ${formData.pickupAmPm}`;
+    const pickupTimeFull = isReservation ? formData.pickupTime.replace('T', ' ') : '즉시 배차 (최대한 빨리)';
     
     // 제주도 탁송은 무조건 선불 원칙이며 요금은 상담 후 결정
     const finalPaymentMethod = serviceType === 'jeju' ? 'prepaid' : paymentMethod;
     const paymentMethodText = finalPaymentMethod === 'prepaid' ? '선불' : '후불';
 
+    const stopoversText = formData.stopovers.length > 0 
+      ? formData.stopovers.map((s, i) => `\n🛑 경유${i+1}: ${s.address} ${s.detail} (📞 ${s.contact || formData.customerPhone})`).join('')
+      : ' 없음';
+
     const message = `
 🚀 <b>[신규 접수 알림 - ${serviceLabel}]</b>
-📍 출발: ${formData.departureAddr || '정보 없음'}
-📞 출발 연락처: ${formData.departureContact || formData.customerPhone || '정보 없음'}
-🛑 경유: ${hasStopover ? (formData.stopoverAddr || '정보 없음') : '정보 없음'}
-📞 경유 연락처: ${hasStopover ? (formData.stopoverContact || formData.customerPhone || '정보 없음') : '정보 없음'}
-🏁 도착: ${formData.arrivalAddr || '정보 없음'}
-📞 도착 연락처: ${formData.arrivalContact || formData.customerPhone || '정보 없음'}
+📍 출발: ${formData.departureAddr}
+${stopoversText}
+🏁 도착: ${formData.arrivalAddr}
+📞 연락처: ${formData.customerPhone || '정보 없음'}
 🚗 차량: ${carInfo}
 📅 픽업: ${pickupTimeFull}
 💰 요금: ${serviceType === 'jeju' ? '상담 후 결정 (제주도 특수 노선)' : `상담 후 결정 (${paymentMethodText})`}
@@ -135,7 +163,6 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
         type,
         serviceType,
         isRoundTrip: serviceType === 'jeju' ? isRoundTrip : false,
-        distance,
         estimatedFare: serviceType === 'jeju' ? 0 : estimatedFare,
         paymentMethod: finalPaymentMethod,
         hasStopover,
@@ -147,6 +174,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
 
       // 1. Save to Firestore
       const docRef = await addDoc(collection(db, 'orders'), orderData);
+      setCurrentOrderId(docRef.id);
 
       // 2. Prepare Contract Data
       setContractData({
@@ -189,6 +217,33 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
     setAgreedTerms(checked);
   };
 
+  const addStopover = () => {
+    setFormData(prev => ({
+      ...prev,
+      stopovers: [...prev.stopovers, { address: '', contact: '' }]
+    }));
+    setHasStopover(true);
+  };
+
+  const removeStopover = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      stopovers: prev.stopovers.filter((_, i) => i !== index)
+    }));
+    if (formData.stopovers.length <= 1) {
+      setHasStopover(false);
+    }
+  };
+
+  const handleStopoverChange = (index: number, field: 'address' | 'contact', value: string) => {
+    const newStopovers = [...formData.stopovers];
+    newStopovers[index] = { 
+      ...newStopovers[index], 
+      [field]: field === 'contact' ? formatPhone(value) : value 
+    };
+    setFormData(prev => ({ ...prev, stopovers: newStopovers }));
+  };
+
   const isAgreedAll = agreedPrivacy && agreedTerms;
 
   return (
@@ -199,15 +254,37 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
         {type === 'consignment' && (
           <div className="space-y-4">
             <label className="text-xs font-black text-slate-500 ml-2 uppercase tracking-widest">Service Type</label>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6">
               {serviceTypes.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setServiceType(item.id)}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all shadow-md ${serviceType === item.id ? 'bg-blue-600 border-blue-800 text-white shadow-blue-200 translate-y-[-2px]' : 'bg-white border-slate-200 text-slate-400 hover:border-blue-300'}`}
+                  className={`relative flex flex-col items-center justify-center aspect-square rounded-full transition-all duration-300 group ${
+                    serviceType === item.id 
+                      ? 'scale-110' 
+                      : 'hover:scale-105'
+                  }`}
                 >
-                  <item.icon size={20} className="mb-2" />
-                  <span className="text-xs font-black">{item.label}</span>
+                  <div className={`w-full h-full rounded-full flex flex-col items-center justify-center p-4 border-b-8 transition-all duration-300 ${
+                    serviceType === item.id 
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-700 border-blue-900 shadow-[0_20px_50px_rgba(37,99,235,0.4)] text-white translate-y-[-8px]' 
+                      : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 text-slate-400 hover:border-blue-300'
+                  }`}>
+                    <div className={`mb-2 p-3 rounded-full ${serviceType === item.id ? 'bg-white/20' : 'bg-slate-50'}`}>
+                      <item.icon 
+                        size={serviceType === item.id ? 36 : 32} 
+                        className={`${serviceType === item.id ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'}`} 
+                      />
+                    </div>
+                    <span className={`text-[13px] font-black leading-tight text-center ${serviceType === item.id ? 'text-white' : 'text-slate-900'}`}>
+                      {item.label}
+                    </span>
+                    {serviceType === item.id && (
+                      <div className="absolute -top-2 -right-2 bg-white text-blue-600 rounded-full p-1 shadow-lg animate-bounce">
+                        <Check size={16} strokeWidth={4} />
+                      </div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
@@ -236,52 +313,94 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
         )}
 
         {/* 1. 의뢰인 정보 */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-sm font-black text-slate-700 ml-2 italic">의뢰인 연락처</label>
-            <div className="relative">
-              <Phone className="absolute left-4 top-5 w-6 h-6 text-blue-500" />
-              <input 
-                type="tel" 
-                name="customerPhone"
-                value={formData.customerPhone}
-                onChange={handleInputChange}
-                placeholder="010-0000-0000" 
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xl transition-all" 
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-black text-slate-700 ml-2 italic">픽업 희망 일시</label>
-            <div className="flex gap-3">
-              <input 
-                type="datetime-local" 
-                name="pickupTime"
-                value={formData.pickupTime}
-                onChange={handleInputChange}
-                className="flex-1 bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xl transition-all" 
-              />
-              <div className="flex bg-white border-2 border-slate-200 rounded-2xl p-1 shadow-lg">
-                <button 
-                  onClick={() => setFormData(prev => ({ ...prev, pickupAmPm: '오전' }))}
-                  className={`px-4 py-2 rounded-xl font-black text-sm transition-all ${formData.pickupAmPm === '오전' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
-                >
-                  오전
-                </button>
-                <button 
-                  onClick={() => setFormData(prev => ({ ...prev, pickupAmPm: '오후' }))}
-                  className={`px-4 py-2 rounded-xl font-black text-sm transition-all ${formData.pickupAmPm === '오후' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
-                >
-                  오후
-                </button>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isReservation ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-400'}`}>
+                {isReservation ? <Clock size={20} /> : <Zap size={20} />}
+              </div>
+              <div>
+                <h4 className="font-black text-slate-900 leading-tight">예약신청</h4>
+                <p className="text-[10px] font-bold text-slate-400">
+                  {isReservation ? '원하시는 시간에 배차' : '지금 바로 즉시 배차'}
+                </p>
               </div>
             </div>
+            
+            <button 
+              onClick={() => setIsReservation(!isReservation)}
+              className="flex items-center gap-2 group outline-none"
+            >
+              <span className={`text-[11px] font-black tracking-tight transition-colors ${isReservation ? 'text-blue-600' : 'text-slate-400'}`}>
+                {isReservation ? '예약 이용 중' : '예약하기'}
+              </span>
+              <div className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isReservation ? 'bg-blue-600' : 'bg-slate-200'}`}>
+                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 shadow-sm ${isReservation ? 'translate-x-6' : 'translate-x-0'}`} />
+              </div>
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-black text-slate-900 ml-2 italic underline underline-offset-4 decoration-blue-500/30 font-black">의뢰인 연락처</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-5 w-6 h-6 text-blue-500" />
+                <input 
+                  type="tel" 
+                  name="customerPhone"
+                  value={formData.customerPhone}
+                  onChange={handleInputChange}
+                  placeholder="010-0000-0000" 
+                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xl transition-all placeholder:text-slate-300 text-slate-900" 
+                />
+              </div>
+            </div>
+
+            <AnimatePresence>
+              {isReservation && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20, height: 0 }}
+                  animate={{ opacity: 1, x: 0, height: 'auto' }}
+                  exit={{ opacity: 0, x: 20, height: 0 }}
+                  className="space-y-2 overflow-hidden"
+                >
+                  <label className="text-sm font-black text-slate-900 ml-2 italic underline underline-offset-4 decoration-blue-500/30 font-black">픽업 희망 일시</label>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-4 top-5 w-5 h-5 text-blue-500 z-10" />
+                      <input 
+                        type="datetime-local" 
+                        name="pickupTime"
+                        value={formData.pickupTime}
+                        onChange={handleInputChange}
+                        className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-12 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xl transition-all text-slate-900" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isTimeSaved ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200 group-hover:border-blue-400'}`}>
+                        {isTimeSaved && <Check size={16} className="text-white" strokeWidth={4} />}
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        className="hidden" 
+                        checked={isTimeSaved}
+                        onChange={(e) => setIsTimeSaved(e.target.checked)}
+                      />
+                      <span className={`text-sm font-black transition-colors ${isTimeSaved ? 'text-blue-600' : 'text-slate-500'}`}>선택 시간 저장/확정</span>
+                    </label>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
         {/* 2. 차량 정보 */}
         <div className="space-y-2">
-          <label className="text-sm font-black text-slate-700 ml-2">차량 정보 (정밀 입력)</label>
+          <label className="text-sm font-black text-slate-900 ml-2 italic underline underline-offset-4 decoration-blue-500/30 font-black">차량 정보 (정밀 입력)</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input 
               type="text" 
@@ -289,7 +408,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
               value={formData.carModel}
               onChange={handleInputChange}
               placeholder="모델명 (예: GV80)" 
-              className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all" 
+              className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all placeholder:text-slate-300 text-slate-900" 
             />
             <input 
               type="text" 
@@ -297,13 +416,13 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
               value={formData.carNumber}
               onChange={handleInputChange}
               placeholder="차량번호 (예: 12가 3456)" 
-              className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all" 
+              className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all placeholder:text-slate-300 text-slate-900" 
             />
             <select 
               name="transmission"
               value={formData.transmission}
               onChange={handleInputChange}
-              className="bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all"
+              className="bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all text-slate-900"
             >
               <option>오토</option>
               <option>수동</option>
@@ -315,7 +434,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
         <div className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 text-blue-600">출발지 주소</label>
+              <label className="text-sm font-black text-slate-900 ml-2 text-blue-600 font-black">출발지 주소</label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-5 w-6 h-6 text-blue-500" />
                 <input 
@@ -323,13 +442,13 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                   name="departureAddr"
                   value={formData.departureAddr}
                   onChange={handleInputChange}
-                  placeholder="출발 상세 주소" 
-                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all" 
+                  placeholder="출발지 주소를 입력해 주세요" 
+                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all text-slate-900" 
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 text-blue-600">출발지 연락처</label>
+              <label className="text-sm font-black text-slate-900 ml-2 text-blue-600 font-black">출발지 연락처</label>
               <div className="relative">
                 <User className="absolute left-4 top-5 w-6 h-6 text-blue-500" />
                 <input 
@@ -338,7 +457,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                   value={formData.departureContact}
                   onChange={handleInputChange}
                   placeholder="현장 연락처" 
-                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all" 
+                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all text-slate-900" 
                 />
               </div>
             </div>
@@ -346,7 +465,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 text-orange-600">도착지 주소</label>
+              <label className="text-sm font-black text-slate-900 ml-2 text-orange-600 font-black">도착지 주소</label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-5 w-6 h-6 text-orange-500" />
                 <input 
@@ -354,13 +473,13 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                   name="arrivalAddr"
                   value={formData.arrivalAddr}
                   onChange={handleInputChange}
-                  placeholder="도착 상세 주소" 
-                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-orange-500 text-xl transition-all" 
+                  placeholder="도착지 주소를 입력해 주세요" 
+                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-orange-500 text-xl transition-all text-slate-900" 
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 text-orange-600">도착지 연락처</label>
+              <label className="text-sm font-black text-slate-900 ml-2 text-orange-600 font-black">도착지 연락처</label>
               <div className="relative">
                 <User className="absolute left-4 top-5 w-6 h-6 text-orange-500" />
                 <input 
@@ -369,64 +488,80 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                   value={formData.arrivalContact}
                   onChange={handleInputChange}
                   placeholder="현장 연락처" 
-                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-orange-500 text-xl transition-all" 
+                  className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 pl-14 pr-4 font-black shadow-lg shadow-slate-100 outline-none focus:border-orange-500 text-xl transition-all text-slate-900" 
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* 거리 입력 (제주도 탁송 시 숨김) */}
-        {serviceType !== 'jeju' && (
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2">예상 이동 거리 (km)</label>
-              <input 
-                type="number" 
-                value={distance || ''} 
-                onChange={(e) => setDistance(Number(e.target.value))}
-                placeholder="0" 
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-blue-500 text-xl transition-all" 
-              />
-            </div>
-            <div className="flex items-end gap-6 pb-1">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input type="checkbox" checked={hasStopover} onChange={(e) => setHasStopover(e.target.checked)} className="w-6 h-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-base font-bold text-slate-700">경유지 있음</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
+        {/* 거리 입력 제거 - 경유지 추가 버튼만 유지 */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={addStopover}
+            type="button"
+            className="flex items-center gap-2 px-8 py-5 bg-purple-600 text-white rounded-2xl font-black shadow-xl shadow-purple-200 hover:bg-purple-700 transition-all active:scale-95 text-lg"
+          >
+            <MapPin size={24} />
+            경유지 추가
+          </button>
+          
+          <label className="flex items-center gap-3 cursor-pointer select-none py-4 ml-auto">
                 <input type="checkbox" checked={isUpward} onChange={(e) => setIsUpward(e.target.checked)} className="w-6 h-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-base font-bold text-slate-700">상행선 할증</span>
+                <span className="text-base font-black text-slate-900">상행선 할증</span>
               </label>
             </div>
-          </div>
-        )}
 
-        {/* 5. 경유지 정보 */}
-        {hasStopover && (
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 italic text-purple-600">경유지 주소</label>
-              <input 
-                type="text" 
-                name="stopoverAddr"
-                value={formData.stopoverAddr}
-                onChange={handleInputChange}
-                placeholder="경유지 상세 주소" 
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-purple-500 text-xl transition-all" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-black text-slate-700 ml-2 italic text-purple-600">경유지 연락처</label>
-              <input 
-                type="tel" 
-                name="stopoverContact"
-                value={formData.stopoverContact}
-                onChange={handleInputChange}
-                placeholder="현장 연락처" 
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl py-5 px-6 font-black shadow-lg shadow-slate-100 outline-none focus:border-purple-500 text-xl transition-all" 
-              />
-            </div>
+        {/* 5. 경유지 정보 (여러 개 가능) */}
+        {formData.stopovers.length > 0 && (
+          <div className="space-y-6">
+            <h4 className="text-lg font-black text-purple-600 ml-2 flex items-center gap-2">
+              <MapPin size={20} /> 경유지 목록 ({formData.stopovers.length})
+            </h4>
+            {formData.stopovers.map((stopover, index) => (
+              <div key={index} className="bg-purple-50/50 p-6 rounded-[2rem] border-2 border-purple-100 relative animate-in slide-in-from-top-4 duration-300">
+                <button 
+                  onClick={() => removeStopover(index)}
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-all"
+                >
+                  <X size={16} />
+                </button>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-purple-700 ml-2 uppercase tracking-widest">경유지 {index + 1} 주소</label>
+                    <div className="space-y-3">
+                      <input 
+                        type="text" 
+                        value={stopover.address}
+                        onChange={(e) => handleStopoverChange(index, 'address', e.target.value)}
+                        placeholder="경유지 주소" 
+                        className="w-full bg-white border-2 border-slate-200 rounded-2xl py-4 px-6 font-black shadow-md outline-none focus:border-purple-500 text-lg transition-all text-slate-900" 
+                      />
+                      <input 
+                        type="text" 
+                        value={stopover.detail}
+                        onChange={(e) => handleStopoverChange(index, 'detail', e.target.value)}
+                        placeholder="경유지 상세 주소" 
+                        className="w-full bg-white border-2 border-slate-200 rounded-2xl py-3 px-6 font-bold shadow-sm outline-none focus:border-purple-500 text-base transition-all" 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-purple-700 ml-2 uppercase tracking-widest">경유지 {index + 1} 연락처</label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-4 w-5 h-5 text-purple-500" />
+                      <input 
+                        type="tel" 
+                        value={stopover.contact}
+                        onChange={(e) => handleStopoverChange(index, 'contact', e.target.value)}
+                        placeholder="현장 연락처" 
+                        className="w-full bg-white border-2 border-slate-200 rounded-2xl py-4 pl-12 pr-4 font-black shadow-md outline-none focus:border-purple-500 text-lg transition-all" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -437,7 +572,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
             <p className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter">
               기업은행 <span className="text-blue-600">361-110962-01-017</span>
             </p>
-            <p className="text-2xl font-black text-slate-700">모노솔루션 김우곤</p>
+            <p className="text-2xl font-black text-slate-900">모노솔루션 김우곤</p>
           </div>
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
             <p className="text-base font-black text-slate-600 leading-relaxed">
@@ -449,7 +584,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
 
         {/* 6. 기타 전달사항 */}
         <div className="space-y-2">
-          <label className="text-sm font-black text-slate-700 ml-2 flex items-center gap-1">
+          <label className="text-sm font-black text-slate-900 ml-2 flex items-center gap-1">
             <ClipboardList className="w-4 h-4 text-blue-600" /> 기타 전달사항
           </label>
           <textarea 
@@ -464,7 +599,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
 
         {/* 7. 결제방법 (제주도는 선불 고정) */}
         <div className="space-y-2">
-          <label className="text-sm font-black text-slate-700 ml-2">결제방법</label>
+          <label className="text-sm font-black text-slate-900 ml-2">결제방법</label>
           {serviceType === 'jeju' ? (
             <div className="bg-blue-600 py-5 rounded-2xl font-black text-white text-center border-2 border-blue-600 text-lg">
               선불 (제주도 노선 원칙)
@@ -509,7 +644,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                 onChange={(e) => setAgreedPrivacy(e.target.checked)}
                 className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
               />
-              <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">[필수] 개인정보 수집 및 이용 동의</span>
+              <span className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">[필수] 개인정보 수집 및 이용 동의</span>
             </label>
 
             <label className="flex items-center gap-3 cursor-pointer group">
@@ -519,7 +654,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                 onChange={(e) => setAgreedTerms(e.target.checked)}
                 className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
               />
-              <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">[필수] 탁송 이용 약관 및 사고 발생 시 면책 조항 동의</span>
+              <span className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">[필수] 탁송 이용 약관 및 사고 발생 시 면책 조항 동의</span>
             </label>
           </div>
 
@@ -621,7 +756,7 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                   </div>
                   <div className="space-y-1">
                     <p className="text-slate-400 font-bold">운송인</p>
-                    <p className="text-slate-900 font-black">(주)달리고 (배정기사: 미정)</p>
+                    <p className="text-slate-900 font-black">달리고 (배정기사: 미정)</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-slate-400 font-bold">차량정보</p>
@@ -688,14 +823,35 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                 <Copy size={18} /> 계약서 출력 / PDF 저장
               </button>
               <button 
-                onClick={() => {
+                onClick={async () => {
+                  if (currentOrderId) {
+                    try {
+                      await updateDoc(doc(db, 'orders', currentOrderId), {
+                        contractConfirmed: true,
+                        confirmedAt: new Date().toISOString(),
+                        contractSnapshot: {
+                          id: contractData.id,
+                          version: '1.0',
+                          confirmedBy: formData.customerPhone
+                        }
+                      });
+                    } catch (error) {
+                      console.error("Error confirming contract:", error);
+                    }
+                  }
                   setShowContractPopup(false);
                   if (serviceType === 'jeju' || paymentMethod === 'prepaid') setShowBankPopup(true);
                   else alert('신청이 성공적으로 접수되었습니다.');
                 }}
                 className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20"
               >
-                계약 내용 확인 및 동의 완료
+                최종 접수가 완료 되었습니다
+              </button>
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-slate-200 text-slate-600 font-black rounded-2xl hover:bg-slate-300 transition-all flex items-center justify-center gap-2"
+              >
+                메인 화면으로 (홈)
               </button>
               <p className="text-center mt-2 text-[10px] text-slate-400 font-bold">
                 안전한 길의 파트너, 달리고 고객센터: 1844-1585
@@ -748,6 +904,12 @@ ${serviceType === 'jeju' ? `🏝️ 제주도 왕복: ${isRoundTrip ? '예' : '�
                 className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl"
               >
                 확인 완료
+              </button>
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="w-full py-4 bg-slate-100 text-slate-500 font-black rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+              >
+                메인 화면으로 (홈)
               </button>
             </div>
           </div>

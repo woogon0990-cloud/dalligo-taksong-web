@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import axios from "axios";
+import fs from "fs";
 
 async function startServer() {
   const app = express();
@@ -21,20 +22,24 @@ async function startServer() {
   // 2. RSS Feed 핸들러 (네이버/구글 공통 최적화)
   const rssHandler = (req, res) => {
     res.set("Content-Type", "application/xml; charset=utf-8");
-    const siteUrl = "https://service-894226691820.us-west1.run.app";
+    const hostname = req.hostname;
+    const protocol = req.protocol === 'https' ? 'https' : 'http';
+    const siteUrl = `${protocol}://${hostname}`;
+    const isIlryu = hostname.includes('ilryu') || hostname.includes('1ryu');
+    const brandName = isIlryu ? "일류전국탁송" : "달리고 탁송";
 
     const rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>모노솔루션 달리고 탁송</title>
+    <title>${brandName}</title>
     <link>${siteUrl}/</link>
     <description>전국 신속 안전 차량 탁송 서비스</description>
     <language>ko</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <item>
-      <title>달리고 탁송 - 전국 24시간 신속 안전 차량 탁송</title>
+      <title>${brandName} - 전국 24시간 신속 안전 차량 탁송</title>
       <link>${siteUrl}/</link>
-      <description>전국 어디서나 24시간 신속하게 배차되는 달리고 탁송 서비스입니다. 일반 탁송, 캐리어 탁송, 제주도 탁송 전문.</description>
+      <description>전국 어디서나 24시간 신속하게 배차되는 ${brandName} 서비스입니다. 일반 탁송, 캐리어 탁송, 제주도 탁송 전문.</description>
       <pubDate>${new Date().toUTCString()}</pubDate>
       <guid>${siteUrl}/</guid>
     </item>
@@ -51,10 +56,13 @@ async function startServer() {
   // 3. Sitemap 엔드포인트
   app.get("/sitemap.xml", (req, res) => {
     res.set("Content-Type", "application/xml");
+    const hostname = req.hostname;
+    const protocol = req.protocol === 'https' ? 'https' : 'http';
+    const siteUrl = `${protocol}://${hostname}`;
     const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://service-894226691820.us-west1.run.app/</loc>
+    <loc>${siteUrl}/</loc>
     <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -66,11 +74,14 @@ async function startServer() {
   // 4. robots.txt 엔드포인트
   app.get("/robots.txt", (req, res) => {
     res.set("Content-Type", "text/plain");
+    const hostname = req.hostname;
+    const protocol = req.protocol === 'https' ? 'https' : 'http';
+    const siteUrl = `${protocol}://${hostname}`;
     const robots = `User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://service-894226691820.us-west1.run.app/sitemap.xml`;
+Sitemap: ${siteUrl}/sitemap.xml`;
     res.send(robots);
   });
 
@@ -104,11 +115,51 @@ Sitemap: https://service-894226691820.us-west1.run.app/sitemap.xml`;
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // Development mode dynamic meta injection
+    app.use(async (req, res, next) => {
+      if (req.path.includes('.') || req.path.startsWith('/api')) return next();
+      
+      const hostname = req.hostname;
+      const isIlryu = hostname.includes('ilryu') || hostname.includes('1ryu');
+      const siteTitle = isIlryu ? "일류전국탁송" : "달리고 탁송";
+      const siteDescription = isIlryu 
+        ? "일류전국탁송 - 전국 24시간 신속 안전 차량 탁송 & 대리운전 전문 서비스" 
+        : "달리고 탁송 - 전국 24시간 신속 안전 차량 탁송 & 대리운전 전문 서비스";
+
+      try {
+        let html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
+        html = await vite.transformIndexHtml(req.url, html);
+        html = html.replace(/__TITLE__/g, siteTitle);
+        html = html.replace(/__DESCRIPTION__/g, siteDescription);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Serve static files but skip index.html
+    app.use(express.static(distPath, { index: false }));
+
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const hostname = req.hostname;
+      const isIlryu = hostname.includes('ilryu') || hostname.includes('1ryu');
+      
+      const siteTitle = isIlryu ? "일류전국탁송" : "달리고 탁송";
+      const siteDescription = isIlryu 
+        ? "일류전국탁송 - 전국 24시간 신속 안전 차량 탁송 & 대리운전 전문 서비스" 
+        : "달리고 탁송 - 전국 24시간 신속 안전 차량 탁송 & 대리운전 전문 서비스";
+
+      try {
+        let html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
+        html = html.replace(/__TITLE__/g, siteTitle);
+        html = html.replace(/__DESCRIPTION__/g, siteDescription);
+        res.set('Content-Type', 'text/html').send(html);
+      } catch (e) {
+        res.status(500).send("Error loading index.html");
+      }
     });
   }
 

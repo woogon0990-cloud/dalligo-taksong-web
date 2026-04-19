@@ -83,7 +83,7 @@ export const EditableText: React.FC<EditableTextProps> = ({ contentKey, defaultT
   };
 
   return (
-    <div className="relative group inline-block w-full">
+    <span className="relative group inline-block w-full">
       <Component
         contentEditable={isEditing && isAdmin}
         onBlur={handleBlur}
@@ -93,10 +93,10 @@ export const EditableText: React.FC<EditableTextProps> = ({ contentKey, defaultT
         {text}
       </Component>
       {isAdmin && isEditing && (
-        <div className="absolute -top-6 right-0 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="absolute -top-6 right-0 bg-blue-500 text-white text-[10px] px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
           Edit
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   );
 };

@@ -46,9 +46,26 @@
       "properties": {
         "uid": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "user"] }
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "points": { "type": "number", "default": 0 },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "PointLog": {
+      "title": "PointLog",
+      "description": "History of point transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "balanceAfter": { "type": "number" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "balanceAfter", "createdAt"]
     }
   },
   "firestore": {
@@ -63,6 +80,10 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles and roles"
+    },
+    "/point_logs/{logId}": {
+      "schema": "PointLog",
+      "description": "Point transaction logs"
     }
   }
 }

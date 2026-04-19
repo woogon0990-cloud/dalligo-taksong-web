@@ -1,53 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "woogon0990@gmail.com" && request.auth.token.email_verified == true));
-    }
-
-    function isValidOrder(data) {
-      return data.keys().hasAll(['type', 'customerPhone', 'departureAddr', 'arrivalAddr', 'status']) &&
-             data.type in ['consignment', 'chauffeur'] &&
-             data.status in ['pending', 'assigned', 'completed'] &&
-             data.customerPhone is string && data.customerPhone.size() < 20 &&
-             data.departureAddr is string && data.departureAddr.size() < 200 &&
-             data.arrivalAddr is string && data.arrivalAddr.size() < 200;
-    }
-
-    function isValidContent(data) {
-      return data.keys().hasAll(['key', 'value', 'type']) &&
-             data.type in ['text', 'image'] &&
-             data.key is string && data.value is string;
-    }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
-    }
-
-    match /orders/{orderId} {
-      allow read: if isAdmin();
-      allow create: if isValidOrder(request.resource.data);
-      allow update: if isAdmin() && isValidOrder(request.resource.data);
-      allow delete: if isAdmin();
-    }
-
-    match /contents/{contentId} {
-      allow read: if true; // Publicly readable
-      allow write: if isAdmin() && isValidContent(request.resource.data);
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
